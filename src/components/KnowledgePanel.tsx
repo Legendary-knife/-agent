@@ -22,15 +22,27 @@ interface KnowledgePanelProps {
 export function KnowledgePanel({ documents }: KnowledgePanelProps) {
   const [scope, setScope] = useState('product')
   const [owner, setOwner] = useState('用户上传')
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [uploadMessage, setUploadMessage] = useState('')
+  const [inputKey, setInputKey] = useState(0)
   const uploadDocument = useWorkbenchStore((state) => state.uploadDocument)
   const isUploading = useWorkbenchStore((state) => state.isUploading)
+  const error = useWorkbenchStore((state) => state.error)
 
-  const handleUpload = (file: File | undefined) => {
-    if (!file || isUploading) {
+  const handleUpload = async () => {
+    if (!selectedFile || isUploading) {
       return
     }
 
-    void uploadDocument(file, scope, owner)
+    try {
+      setUploadMessage('')
+      const document = await uploadDocument(selectedFile, scope, owner)
+      setUploadMessage(`已上传：${document.title}`)
+      setSelectedFile(null)
+      setInputKey((value) => value + 1)
+    } catch {
+      setUploadMessage('')
+    }
   }
 
   return (
@@ -45,11 +57,15 @@ export function KnowledgePanel({ documents }: KnowledgePanelProps) {
             上传知识文件
           </label>
           <input
+            key={inputKey}
             id="knowledge-upload"
             type="file"
             accept=".txt,.md,.csv,.html,.pdf,.docx"
             disabled={isUploading}
-            onChange={(event) => handleUpload(event.target.files?.[0])}
+            onChange={(event) => {
+              setSelectedFile(event.target.files?.[0] ?? null)
+              setUploadMessage('')
+            }}
             className="w-full rounded-md border border-line bg-white px-2 py-2 text-xs text-muted file:mr-3 file:rounded-md file:border-0 file:bg-moss file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-white"
           />
           <div className="grid grid-cols-2 gap-2">
@@ -72,8 +88,34 @@ export function KnowledgePanel({ documents }: KnowledgePanelProps) {
           </div>
           <div className="flex items-center gap-2 text-[11px] leading-5 text-muted">
             {isUploading ? <Loader2 className="h-3.5 w-3.5 animate-spin text-moss" /> : <Upload className="h-3.5 w-3.5 text-moss" />}
-            {isUploading ? '正在解析、切分并写入知识库' : '支持 txt、md、csv、html、pdf、docx'}
+            {isUploading
+              ? '正在解析、切分并写入知识库'
+              : selectedFile
+                ? `已选择：${selectedFile.name}`
+                : '支持 txt、md、csv、html、pdf、docx'}
           </div>
+          <button
+            type="button"
+            disabled={!selectedFile || isUploading}
+            onClick={() => void handleUpload()}
+            className={cn(
+              'inline-flex items-center justify-center gap-2 rounded-md px-3 py-2 text-xs font-semibold text-white transition',
+              !selectedFile || isUploading ? 'bg-[#9aa89b]' : 'bg-moss hover:bg-[#255b42]',
+            )}
+          >
+            {isUploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+            {isUploading ? '上传中' : '上传并入库'}
+          </button>
+          {uploadMessage ? (
+            <div className="rounded-md border border-[#b8dcc5] bg-[#eef7f1] px-2 py-1.5 text-xs leading-5 text-moss">
+              {uploadMessage}
+            </div>
+          ) : null}
+          {error ? (
+            <div className="rounded-md border border-[#f0d6c8] bg-[#fff7f2] px-2 py-1.5 text-xs leading-5 text-clay">
+              {error}
+            </div>
+          ) : null}
         </div>
       </div>
 

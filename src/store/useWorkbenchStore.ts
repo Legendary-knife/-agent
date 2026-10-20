@@ -25,7 +25,7 @@ interface WorkbenchState {
   businessRecords: BusinessRecord[]
   runs: AgentRun[]
   loadWorkbench: () => Promise<void>
-  uploadDocument: (file: File, scope: string, owner: string) => Promise<void>
+  uploadDocument: (file: File, scope: string, owner: string) => Promise<KnowledgeDocument>
   setScenario: (scenarioId: ScenarioId) => void
   setPrompt: (prompt: string) => void
   runActiveScenario: () => Promise<void>
@@ -86,11 +86,14 @@ export const useWorkbenchStore = create<WorkbenchState>((set, get) => ({
         knowledgeDocuments: [document, ...state.knowledgeDocuments.filter((item) => item.id !== document.id)],
         isUploading: false,
       }))
+      return document
     } catch (error) {
+      const message = error instanceof Error ? error.message : '知识库上传失败'
       set({
-        error: error instanceof Error ? error.message : '知识库上传失败',
+        error: message,
         isUploading: false,
       })
+      throw new Error(message)
     }
   },
   runActiveScenario: async () => {
