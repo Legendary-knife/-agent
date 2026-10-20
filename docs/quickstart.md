@@ -66,6 +66,47 @@ http://localhost:5173
 5. 看“Agent 输出”，这是最终业务结论。
 6. 看右侧“执行 Trace”，这是面试时最该讲的部分。
 
+现在输入不同问题，输出会跟着变。比如在“企业知识库 Agent”里分别输入：
+
+```text
+海外渠道商能不能申请账期？
+```
+
+```text
+A100 控制器有哪些产品参数和合规限制？
+```
+
+你会看到 Trace 里的任务重点分别变成“账期审批”和“产品资料”，引用资料、工具调用和最终回答也会变。
+
+## 使用人员怎么用
+
+使用人员不用关心代码，把它当成一个业务工作台：
+
+1. 先选场景：知识库、外贸销售或供应链。
+2. 输入真实业务问题。
+3. 点击“运行 Agent”。
+4. 先看“Agent 输出”，判断结论能不能用。
+5. 再看“执行 Trace”，确认它引用了哪些资料、调用了哪些工具。
+6. 如果出现“需人审”，说明系统只生成建议，不会直接改业务系统。
+
+## 开发人员怎么用
+
+开发人员主要看这些位置：
+
+- `backend/app/data.py`：加新的文档、工具、CRM/ERP/WMS 模拟数据。
+- `backend/app/agent_service.py`：改 Agent 判断逻辑、工具选择和回答生成。
+- `backend/app/main.py`：加新的 API。
+- `src/services/api.ts`：前端 API 客户端。
+- `src/store/useWorkbenchStore.ts`：前端状态和接口调用。
+- `src/components/`：页面组件。
+
+如果要接真实系统，推荐顺序是：
+
+1. 先把 `backend/app/data.py` 的 demo 数据换成数据库。
+2. 再把 `retrieve_documents` 换成 pgvector 或 Qdrant 检索。
+3. 再把 `select_tools` 换成真正的 Tool Registry。
+4. 最后用 LangGraph 替换现在的 deterministic agent service。
+
 ## 建议第一次演示用这个场景
 
 选“供应链 Agent”，保留默认问题：

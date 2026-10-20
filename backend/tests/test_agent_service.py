@@ -16,6 +16,18 @@ class AgentServiceTest(unittest.TestCase):
         self.assertEqual([step.kind for step in run.trace], ["plan", "rag", "tool", "approval", "answer"])
         self.assertEqual(run.trace[3].status, "needs_approval")
 
+    def test_answers_change_with_prompt_focus(self) -> None:
+        credit_run = create_agent_run(
+            AgentRunRequest(scenarioId="knowledge", prompt="海外渠道商能不能申请账期？")
+        )
+        product_run = create_agent_run(
+            AgentRunRequest(scenarioId="knowledge", prompt="A100 控制器有哪些产品参数和合规限制？")
+        )
+
+        self.assertNotEqual(credit_run.answer, product_run.answer)
+        self.assertIn("账期审批", credit_run.trace[0].detail)
+        self.assertIn("产品资料", product_run.trace[0].detail)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -9,6 +9,7 @@ import { MetricCard } from '@/components/MetricCard'
 import { RoadmapPanel } from '@/components/RoadmapPanel'
 import { ScenarioSwitcher } from '@/components/ScenarioSwitcher'
 import { ToolRegistry } from '@/components/ToolRegistry'
+import { UsageGuidePanel } from '@/components/UsageGuidePanel'
 import { useWorkbenchStore } from '@/store/useWorkbenchStore'
 
 const metricIcons = [FileSearch, PlugZap, Layers3, LockKeyhole]
@@ -101,6 +102,7 @@ export default function Home() {
             ))}
           </div>
           <AgentConsole />
+          <UsageGuidePanel />
           <ArchitecturePanel />
         </div>
 

@@ -73,6 +73,15 @@ KNOWLEDGE_DOCUMENTS = [
 
 TOOL_DEFINITIONS = [
     {
+        "id": "knowledge_search",
+        "name": "知识库检索",
+        "category": "Knowledge",
+        "description": "按业务问题召回制度、产品、销售和供应链文档片段。",
+        "schema": "query, scopes[] -> ranked_chunks[]",
+        "riskLevel": "low",
+        "enabled": True,
+    },
+    {
         "id": "crm_lookup",
         "name": "客户画像查询",
         "category": "CRM",
