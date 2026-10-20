@@ -1,9 +1,18 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend.app.agent_service import create_agent_run
-from backend.app.data import BUSINESS_RECORDS, KNOWLEDGE_DOCUMENTS, SCENARIOS, TOOL_DEFINITIONS
-from backend.app.models import AgentRun, AgentRunRequest, HealthResponse
+from backend.app.config import get_settings
+from backend.app.data import BUSINESS_RECORDS, SCENARIOS, TOOL_DEFINITIONS
+from backend.app.document_parser import extract_text
+from backend.app.models import (
+    AgentRun,
+    AgentRunRequest,
+    HealthResponse,
+    KnowledgeDocumentResponse,
+    RuntimeConfigResponse,
+)
+from backend.app.storage import init_database, list_documents, save_document
 
 app = FastAPI(
     title="Enterprise AI Agent Workbench API",
@@ -22,9 +31,25 @@ app.add_middleware(
 RUN_HISTORY: list[AgentRun] = []
 
 
+@app.on_event("startup")
+def startup() -> None:
+    init_database()
+
+
 @app.get("/api/health", response_model=HealthResponse)
 def health() -> HealthResponse:
     return HealthResponse(status="ok", service="agent-workbench-api", version="0.1.0")
+
+
+@app.get("/api/config", response_model=RuntimeConfigResponse)
+def runtime_config() -> RuntimeConfigResponse:
+    settings = get_settings()
+    return RuntimeConfigResponse(
+        llmConfigured=settings.llm_configured,
+        llmBaseUrl=settings.llm_base_url,
+        llmModel=settings.llm_model,
+        ragTopK=settings.rag_top_k,
+    )
 
 
 @app.get("/api/scenarios")
@@ -32,9 +57,30 @@ def list_scenarios() -> list[dict]:
     return SCENARIOS
 
 
-@app.get("/api/knowledge")
+@app.get("/api/knowledge", response_model=list[KnowledgeDocumentResponse])
 def list_knowledge_documents() -> list[dict]:
-    return [{key: value for key, value in document.items() if key != "keywords"} for document in KNOWLEDGE_DOCUMENTS]
+    return list_documents()
+
+
+@app.post("/api/knowledge/upload", response_model=KnowledgeDocumentResponse)
+async def upload_knowledge_document(
+    file: UploadFile = File(...),
+    scope: str = Form("product"),
+    owner: str = Form("用户上传"),
+) -> dict:
+    try:
+        content = await file.read()
+        text, file_type = extract_text(file.filename or "uploaded.txt", content)
+        return save_document(
+            title=file.filename or "uploaded.txt",
+            file_type=file_type,
+            scope=scope,
+            owner=owner,
+            source="upload",
+            text=text,
+        )
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
 
 
 @app.get("/api/tools")
@@ -53,9 +99,9 @@ def list_runs() -> list[AgentRun]:
 
 
 @app.post("/api/runs", response_model=AgentRun)
-def create_run(request: AgentRunRequest) -> AgentRun:
+async def create_run(request: AgentRunRequest) -> AgentRun:
     try:
-        run = create_agent_run(request)
+        run = await create_agent_run(request)
     except ValueError as error:
         raise HTTPException(status_code=404, detail=str(error)) from error
 

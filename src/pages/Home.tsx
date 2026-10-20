@@ -20,6 +20,7 @@ export default function Home() {
   const knowledgeDocuments = useWorkbenchStore((state) => state.knowledgeDocuments)
   const tools = useWorkbenchStore((state) => state.tools)
   const businessRecords = useWorkbenchStore((state) => state.businessRecords)
+  const config = useWorkbenchStore((state) => state.config)
   const setScenario = useWorkbenchStore((state) => state.setScenario)
   const isLoading = useWorkbenchStore((state) => state.isLoading)
   const loadWorkbench = useWorkbenchStore((state) => state.loadWorkbench)
@@ -56,6 +57,10 @@ export default function Home() {
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <HeaderPill icon={Database} text="Mock CRM / ERP / WMS" />
+            <HeaderPill
+              icon={PlugZap}
+              text={config?.llmConfigured ? `LLM: ${config.llmModel}` : 'LLM 未配置'}
+            />
             <HeaderPill icon={Activity} text={`${runs.length} runs`} />
           </div>
         </div>
@@ -66,6 +71,17 @@ export default function Home() {
           <div className="flex items-center gap-2 rounded-lg border border-line bg-white p-4 text-sm text-muted shadow-sm">
             <Loader2 className="h-4 w-4 animate-spin text-moss" />
             正在连接 FastAPI 后端并加载工作台数据
+          </div>
+        </div>
+      ) : null}
+
+      {!isLoading && config && !config.llmConfigured ? (
+        <div className="mx-auto max-w-[1520px] px-4 pt-4 lg:px-6">
+          <div className="rounded-lg border border-[#efd8b8] bg-[#fff8ec] p-3 text-sm leading-6 text-[#7c4d12]">
+            当前没有配置真实大模型。系统可以上传知识库并完成检索，但不会冒充模型生成答案。复制
+            <span className="mx-1 rounded bg-white px-1.5 py-0.5 font-mono text-xs">.env.example</span>
+            为 <span className="mx-1 rounded bg-white px-1.5 py-0.5 font-mono text-xs">.env</span>
+            并填入 OpenAI-compatible 模型配置后，RAG 回答才会由模型生成。
           </div>
         </div>
       ) : null}

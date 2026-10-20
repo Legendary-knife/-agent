@@ -4,15 +4,16 @@
 
 ## 你先记住它是什么
 
-这是一个“企业 AI Agent 工作台”演示项目，不是单纯的 RAG 教程，也不是普通聊天框。
+这是一个“企业 AI Agent 工作台”，不是单纯的 RAG 教程，也不是普通聊天框。
 
 它要展示的是：
 
 - 用户提一个业务问题；
 - Agent 拆任务；
-- 后端做 RAG 检索；
+- 后端从 SQLite 知识库做 RAG 检索；
 - 后端选择工具；
 - 工具读取 CRM / ERP / WMS 模拟数据；
+- 如果配置了模型，后端会把检索结果交给大模型生成回答；
 - 高风险动作进入审批校验；
 - 页面展示最终结论和完整 Trace。
 
@@ -35,6 +36,22 @@ npm install
 ```bash
 python3 -m pip install -r requirements.txt
 ```
+
+配置模型：
+
+```bash
+cp .env.example .env
+```
+
+编辑 `.env`：
+
+```env
+LLM_BASE_URL=https://api.deepseek.com
+LLM_API_KEY=你的真实 Key
+LLM_MODEL=deepseek-chat
+```
+
+说明：如果你不配置模型，系统仍然能上传文档、切分文档、检索知识库，但不会假装生成模型回答。页面顶部会显示“LLM 未配置”，Agent 输出也会提示缺少模型配置。
 
 启动前后端：
 
@@ -60,11 +77,12 @@ http://localhost:5173
 打开页面后，按这个顺序操作：
 
 1. 左侧选一个场景，比如“供应链 Agent”。
-2. 中间会自动填入一个业务问题。
-3. 你可以直接用默认问题，也可以自己改。
-4. 点“运行 Agent”。
-5. 看“Agent 输出”，这是最终业务结论。
-6. 看右侧“执行 Trace”，这是面试时最该讲的部分。
+2. 右侧“知识库”上传你的 txt、md、csv、html、pdf 或 docx 文件。
+3. 中间会自动填入一个业务问题。
+4. 你可以直接用默认问题，也可以自己改。
+5. 点“运行 Agent”。
+6. 看“Agent 输出”，这是最终业务结论。
+7. 看右侧“执行 Trace”，这是最该检查的部分。
 
 现在输入不同问题，输出会跟着变。比如在“企业知识库 Agent”里分别输入：
 
@@ -76,25 +94,58 @@ http://localhost:5173
 A100 控制器有哪些产品参数和合规限制？
 ```
 
-你会看到 Trace 里的任务重点分别变成“账期审批”和“产品资料”，引用资料、工具调用和最终回答也会变。
+你会看到 Trace 里的任务重点分别变成“账期审批”和“产品资料”，引用资料、工具调用和最终回答也会变。如果配置了 LLM，最终回答由模型生成；如果没配置 LLM，系统只返回检索结果和配置提示。
+
+## 如何补充知识库
+
+页面上直接上传文件即可。
+
+上传后后端会做这些事：
+
+1. 解析文本。
+2. 按长度和段落切成 chunk。
+3. 计算本地哈希向量。
+4. 写入 `data/agent_workbench.sqlite3`。
+5. 下一次运行 Agent 时参与检索。
+
+支持格式：
+
+- txt
+- md
+- csv
+- html
+- pdf
+- docx
+
+如果你想重置本地知识库，停止服务后删除：
+
+```bash
+rm -rf data
+```
+
+下次启动会重新生成基础示例知识库。
 
 ## 使用人员怎么用
 
 使用人员不用关心代码，把它当成一个业务工作台：
 
 1. 先选场景：知识库、外贸销售或供应链。
-2. 输入真实业务问题。
-3. 点击“运行 Agent”。
-4. 先看“Agent 输出”，判断结论能不能用。
-5. 再看“执行 Trace”，确认它引用了哪些资料、调用了哪些工具。
-6. 如果出现“需人审”，说明系统只生成建议，不会直接改业务系统。
+2. 上传自己的知识文件。
+3. 输入真实业务问题。
+4. 点击“运行 Agent”。
+5. 先看“Agent 输出”，判断结论能不能用。
+6. 再看“执行 Trace”，确认它引用了哪些资料、调用了哪些工具。
+7. 如果出现“需人审”，说明系统只生成建议，不会直接改业务系统。
 
 ## 开发人员怎么用
 
 开发人员主要看这些位置：
 
 - `backend/app/data.py`：加新的文档、工具、CRM/ERP/WMS 模拟数据。
-- `backend/app/agent_service.py`：改 Agent 判断逻辑、工具选择和回答生成。
+- `backend/app/storage.py`：SQLite 文档和 chunk 存储。
+- `backend/app/retrieval.py`：本地向量检索。
+- `backend/app/llm_client.py`：OpenAI-compatible 模型调用。
+- `backend/app/agent_service.py`：Agent 编排、工具选择、RAG 上下文组装。
 - `backend/app/main.py`：加新的 API。
 - `src/services/api.ts`：前端 API 客户端。
 - `src/store/useWorkbenchStore.ts`：前端状态和接口调用。
@@ -102,10 +153,10 @@ A100 控制器有哪些产品参数和合规限制？
 
 如果要接真实系统，推荐顺序是：
 
-1. 先把 `backend/app/data.py` 的 demo 数据换成数据库。
-2. 再把 `retrieve_documents` 换成 pgvector 或 Qdrant 检索。
+1. 先把 CRM / ERP / WMS 的 demo 数据换成真实只读 API。
+2. 再把 `retrieval.py` 换成 pgvector 或 Qdrant 检索。
 3. 再把 `select_tools` 换成真正的 Tool Registry。
-4. 最后用 LangGraph 替换现在的 deterministic agent service。
+4. 最后用 LangGraph 替换现在的轻量 Agent service。
 
 ## 建议第一次演示用这个场景
 
@@ -137,11 +188,13 @@ http://127.0.0.1:8000/docs
 
 - `GET /api/scenarios`：读取演示场景；
 - `GET /api/knowledge`：读取知识库文档；
+- `POST /api/knowledge/upload`：上传知识库文档；
+- `GET /api/config`：查看模型是否配置；
 - `GET /api/tools`：读取工具中心；
 - `GET /api/business-records`：读取业务系统模拟数据；
 - `POST /api/runs`：创建一次 Agent 运行。
 
-如果你想证明“前端真的调了后端”，打开浏览器开发者工具，看 Network 里的 `/api/runs` 请求。
+如果你想证明“前端真的调了后端”，打开浏览器开发者工具，看 Network 里的 `/api/knowledge/upload` 和 `/api/runs` 请求。
 
 ## 面试时怎么讲
 

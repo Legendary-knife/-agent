@@ -17,11 +17,12 @@ export interface Scenario {
 export interface KnowledgeDocument {
   id: string
   title: string
-  type: 'PDF' | 'DOCX' | 'XLSX' | 'HTML'
-  scope: 'sales' | 'supply' | 'policy' | 'product'
+  type: string
+  scope: string
   chunks: number
   owner: string
   updatedAt: string
+  source: 'demo' | 'upload' | string
 }
 
 export interface ToolDefinition {
@@ -68,4 +69,11 @@ export interface WorkbenchMetric {
   label: string
   value: string
   hint: string
+}
+
+export interface RuntimeConfig {
+  llmConfigured: boolean
+  llmBaseUrl: string
+  llmModel: string
+  ragTopK: number
 }

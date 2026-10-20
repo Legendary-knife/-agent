@@ -45,6 +45,7 @@ export const knowledgeDocuments: KnowledgeDocument[] = [
     chunks: 42,
     owner: '财务运营',
     updatedAt: '2026-10-11',
+    source: 'demo',
   },
   {
     id: 'doc-product-018',
@@ -54,6 +55,7 @@ export const knowledgeDocuments: KnowledgeDocument[] = [
     chunks: 66,
     owner: '产品工程',
     updatedAt: '2026-10-09',
+    source: 'demo',
   },
   {
     id: 'doc-sales-011',
@@ -63,6 +65,7 @@ export const knowledgeDocuments: KnowledgeDocument[] = [
     chunks: 31,
     owner: '海外销售',
     updatedAt: '2026-10-03',
+    source: 'demo',
   },
   {
     id: 'doc-supply-027',
@@ -72,6 +75,7 @@ export const knowledgeDocuments: KnowledgeDocument[] = [
     chunks: 24,
     owner: '供应链计划',
     updatedAt: '2026-10-15',
+    source: 'demo',
   },
 ]
 

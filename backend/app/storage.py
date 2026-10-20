@@ -1,0 +1,209 @@
+import json
+import sqlite3
+from datetime import datetime
+from pathlib import Path
+from typing import Optional
+from uuid import uuid4
+
+from backend.app.config import DATA_DIR, DB_PATH
+from backend.app.data import KNOWLEDGE_DOCUMENTS
+from backend.app.retrieval import chunk_text, cosine_similarity, embed_text
+
+
+DEMO_TEXT_BY_TITLE = {
+    "海外渠道商账期政策": (
+        "海外渠道商可申请账期，但必须满足渠道等级、历史回款、合同主体和财务风控要求。"
+        "申请材料包括近 12 个月采购额、信用证明、预计回款周期、区域负责人意见和财务审核意见。"
+        "高风险客户只能生成审批草稿，不能自动修改授信额度。"
+    ),
+    "A100 控制器产品手册": (
+        "A100 控制器适用于供应链追踪、设备状态采集和工业数据采集场景。"
+        "对外材料应包含核心参数、稳定性说明、欧盟合规说明、交付周期和售后支持边界。"
+        "涉及产品参数的问题应引用产品手册，不应只给销售口径。"
+    ),
+    "欧洲客户开发话术库": (
+        "德国汽车零部件客户通常关注可靠性、交付稳定性、合规文件和技术响应速度。"
+        "开发信建议先提出技术交流邀约，不要首次触达就直接报价。"
+        "CRM 跟进记录需要写明客户阶段、下一步动作和负责人。"
+    ),
+    "供应商交期与安全库存表": (
+        "A100 控制器安全库存为 900 件。本周未交付订单 1280 件，华东仓现货 420 件，在途 300 件。"
+        "当现货加在途仍低于安全库存和未交付需求时，应生成补采建议。"
+        "采购审批材料需要包含订单金额、库存缺口、在途数量和供应商交期。"
+    ),
+}
+
+
+def get_connection() -> sqlite3.Connection:
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    connection = sqlite3.connect(DB_PATH)
+    connection.row_factory = sqlite3.Row
+    return connection
+
+
+def init_database() -> None:
+    with get_connection() as connection:
+        connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS documents (
+                id TEXT PRIMARY KEY,
+                title TEXT NOT NULL,
+                type TEXT NOT NULL,
+                scope TEXT NOT NULL,
+                owner TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                source TEXT NOT NULL
+            )
+            """
+        )
+        connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS chunks (
+                id TEXT PRIMARY KEY,
+                document_id TEXT NOT NULL,
+                chunk_index INTEGER NOT NULL,
+                content TEXT NOT NULL,
+                embedding TEXT NOT NULL,
+                FOREIGN KEY(document_id) REFERENCES documents(id) ON DELETE CASCADE
+            )
+            """
+        )
+        connection.commit()
+
+    seed_demo_documents()
+
+
+def seed_demo_documents() -> None:
+    with get_connection() as connection:
+        document_count = connection.execute("SELECT COUNT(*) FROM documents").fetchone()[0]
+        if document_count > 0:
+            return
+
+    for document in KNOWLEDGE_DOCUMENTS:
+        title = str(document["title"])
+        save_document(
+            title=title,
+            file_type=str(document["type"]),
+            scope=str(document["scope"]),
+            owner=str(document["owner"]),
+            source="demo",
+            text=DEMO_TEXT_BY_TITLE.get(title, title),
+            document_id=str(document["id"]),
+            updated_at=str(document["updatedAt"]),
+        )
+
+
+def save_document(
+    title: str,
+    file_type: str,
+    scope: str,
+    owner: str,
+    source: str,
+    text: str,
+    document_id: Optional[str] = None,
+    updated_at: Optional[str] = None,
+) -> dict:
+    chunks = chunk_text(text)
+    if not chunks:
+        raise ValueError("文档没有可解析的文本内容")
+
+    now = updated_at or datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    resolved_document_id = document_id or f"doc-{uuid4().hex[:12]}"
+    normalized_type = Path(title).suffix.replace(".", "").upper() or file_type.upper()
+
+    with get_connection() as connection:
+        connection.execute(
+            """
+            INSERT OR REPLACE INTO documents (id, title, type, scope, owner, updated_at, source)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            (resolved_document_id, title, normalized_type, scope, owner, now, source),
+        )
+        connection.execute("DELETE FROM chunks WHERE document_id = ?", (resolved_document_id,))
+        for index, chunk in enumerate(chunks):
+            connection.execute(
+                """
+                INSERT INTO chunks (id, document_id, chunk_index, content, embedding)
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                (
+                    f"chunk-{uuid4().hex[:12]}",
+                    resolved_document_id,
+                    index,
+                    chunk,
+                    json.dumps(embed_text(chunk)),
+                ),
+            )
+        connection.commit()
+
+    return {
+        "id": resolved_document_id,
+        "title": title,
+        "type": normalized_type,
+        "scope": scope,
+        "chunks": len(chunks),
+        "owner": owner,
+        "updatedAt": now,
+        "source": source,
+    }
+
+
+def list_documents() -> list[dict]:
+    with get_connection() as connection:
+        rows = connection.execute(
+            """
+            SELECT d.id, d.title, d.type, d.scope, d.owner, d.updated_at, d.source, COUNT(c.id) AS chunks
+            FROM documents d
+            LEFT JOIN chunks c ON c.document_id = d.id
+            GROUP BY d.id
+            ORDER BY d.updated_at DESC
+            """
+        ).fetchall()
+
+    return [
+        {
+            "id": row["id"],
+            "title": row["title"],
+            "type": row["type"],
+            "scope": row["scope"],
+            "chunks": row["chunks"],
+            "owner": row["owner"],
+            "updatedAt": row["updated_at"],
+            "source": row["source"],
+        }
+        for row in rows
+    ]
+
+
+def search_chunks(query: str, top_k: int) -> list[dict]:
+    query_embedding = embed_text(query)
+    with get_connection() as connection:
+        rows = connection.execute(
+            """
+            SELECT c.id, c.document_id, c.chunk_index, c.content, c.embedding,
+                   d.title AS document_title, d.scope, d.type
+            FROM chunks c
+            JOIN documents d ON d.id = c.document_id
+            """
+        ).fetchall()
+
+    scored_chunks: list[tuple[float, sqlite3.Row]] = []
+    for row in rows:
+        embedding = json.loads(row["embedding"])
+        score = cosine_similarity(query_embedding, embedding)
+        if score > 0:
+            scored_chunks.append((score, row))
+
+    return [
+        {
+            "id": row["id"],
+            "documentId": row["document_id"],
+            "documentTitle": row["document_title"],
+            "chunkIndex": row["chunk_index"],
+            "content": row["content"],
+            "score": round(score, 4),
+            "scope": row["scope"],
+            "type": row["type"],
+        }
+        for score, row in sorted(scored_chunks, key=lambda item: item[0], reverse=True)[:top_k]
+    ]

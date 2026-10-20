@@ -38,3 +38,21 @@ class HealthResponse(BaseModel):
     status: Literal["ok"]
     service: str
     version: str
+
+
+class RuntimeConfigResponse(BaseModel):
+    llmConfigured: bool
+    llmBaseUrl: str
+    llmModel: str
+    ragTopK: int
+
+
+class KnowledgeDocumentResponse(BaseModel):
+    id: str
+    title: str
+    type: str
+    scope: str
+    chunks: int
+    owner: str
+    updatedAt: str
+    source: str

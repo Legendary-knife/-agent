@@ -1,25 +1,26 @@
 # 企业 AI Agent 工作台
 
-一个用于面试展示的企业级 AI Agent 落地 Demo。它不是普通聊天框，而是把 RAG、工具调用、工作流编排、业务系统模拟和执行链路观测串到一个工作台里。
+一个可本地运行的企业 AI Agent 工作台。它不是普通聊天框，也不是固定话术演示页；后端会把上传文档落到 SQLite，切分成 chunk，做本地向量检索，再把检索结果交给 OpenAI-compatible 大模型生成回答。
 
 如果你只想先跑起来，看这份：[快速使用指南](./docs/quickstart.md)。
 
 ## 这个项目给谁看
 
-- 给招聘方看：证明你做过企业 Agent 落地 Demo。
+- 给招聘方看：证明你做过真实可运行的企业 Agent 产品雏形。
 - 给面试官讲：展示你理解 RAG、工具调用、业务系统集成和审计链路。
-- 给自己练手：后续可以继续接 PostgreSQL、pgvector、LangGraph 和 MCP。
+- 给自己练手：后续可以继续把 SQLite 检索换成 PostgreSQL / pgvector / Qdrant，把当前 Agent 服务换成 LangGraph。
 
 ## 一句话演示路径
 
-打开页面，选择“供应链 Agent”，点击“运行 Agent”，然后讲右侧 Trace。
+配置模型，上传知识库文件，打开页面，选择“供应链 Agent”，点击“运行 Agent”，然后看右侧 Trace。
 
 这条链路会展示：
 
 - 用户提出业务问题；
 - Agent 拆解任务；
-- 后端做 RAG 检索；
+- 后端从 SQLite 知识库做 RAG 检索；
 - 后端选择 ERP / WMS / 报表工具；
+- 后端把检索片段和业务数据发给大模型；
 - 高风险动作进入审批校验；
 - 页面展示最终结论和完整 Trace。
 
@@ -30,6 +31,8 @@
 - 供应链 Agent：查询模拟 ERP/WMS 数据，识别缺货风险并生成采购审批建议。
 - 工具中心：把 CRM、ERP、WMS、邮件、报表生成封装成统一 schema。
 - Trace 观测：每次运行保留任务拆解、RAG 命中、工具调用、审批校验和最终结论。
+- 知识库上传：支持 txt、md、csv、html、pdf、docx。
+- 模型配置：支持 OpenAI-compatible Chat Completions。
 
 ## 怎么使用
 
@@ -45,6 +48,22 @@ cd /Users/bytedance/Documents/traeSolo/enterprise-ai-agent-workbench
 npm install
 python3 -m pip install -r requirements.txt
 ```
+
+配置模型：
+
+```bash
+cp .env.example .env
+```
+
+然后编辑 `.env`：
+
+```env
+LLM_BASE_URL=https://api.deepseek.com
+LLM_API_KEY=你的真实 Key
+LLM_MODEL=deepseek-chat
+```
+
+不配置模型也能上传知识库和检索，但系统会明确提示“未配置 LLM”，不会假装已经生成模型回答。
 
 启动项目：
 
@@ -67,10 +86,11 @@ http://127.0.0.1:8000/docs
 页面操作顺序：
 
 1. 左侧选择一个 Agent 场景。
-2. 中间确认业务问题。
-3. 点击“运行 Agent”。
-4. 查看“Agent 输出”。
-5. 查看右侧“执行 Trace”。
+2. 右侧知识库上传你的文件。
+3. 中间输入业务问题。
+4. 点击“运行 Agent”。
+5. 查看“Agent 输出”。
+6. 查看右侧“执行 Trace”。
 
 输入不同问题会触发不同重点。比如知识库场景里，问“海外渠道商能不能申请账期？”会走账期审批；问“A100 控制器有哪些产品参数和合规限制？”会走产品资料。
 
@@ -84,6 +104,8 @@ http://127.0.0.1:8000/docs
 - Vitest
 - FastAPI
 - Uvicorn
+- SQLite
+- OpenAI-compatible Chat Completions
 - Python unittest
 
 `npm run dev` 会同时启动：
@@ -108,7 +130,10 @@ enterprise-ai-agent-workbench/
 │   ├── app/
 │   │   ├── main.py       # API 路由
 │   │   ├── agent_service.py
-│   │   ├── data.py       # Demo 数据
+│   │   ├── storage.py     # SQLite 文档和 chunk 存储
+│   │   ├── retrieval.py   # 本地向量检索
+│   │   ├── llm_client.py  # OpenAI-compatible 模型调用
+│   │   ├── data.py        # 场景和业务系统初始数据
 │   │   └── models.py
 │   └── tests/
 ├── src/                  # React 前端
@@ -127,13 +152,15 @@ enterprise-ai-agent-workbench/
 
 这个项目不是普通聊天机器人，而是一个企业 Agent 工作台原型。核心设计是把用户请求拆成可观测的执行链路：先做任务理解，再做 RAG 检索和 rerank，然后通过 Tool Registry 调用业务系统工具，最后输出带引用、带审批边界、可追踪的业务建议。
 
-当前已经接入 FastAPI 后端：
+当前已经接入真实后端能力：
 
 - `/api/scenarios` 返回演示场景。
-- `/api/knowledge` 返回知识库文档。
+- `/api/knowledge` 返回 SQLite 中的知识库文档。
+- `/api/knowledge/upload` 上传文件、解析文本、切分 chunk、写入 SQLite。
+- `/api/config` 返回模型是否已配置。
 - `/api/tools` 返回工具中心定义。
 - `/api/business-records` 返回 CRM / ERP / WMS 模拟数据。
-- `/api/runs` 创建和读取 Agent 运行记录。
+- `/api/runs` 创建和读取 Agent 运行记录，创建时会执行检索和模型调用。
 
 后续真实化路线可以继续扩展为：
 
@@ -145,4 +172,4 @@ enterprise-ai-agent-workbench/
 
 ## 项目边界
 
-当前版本已经具备前后端联调闭环，业务数据仍使用后端 demo 数据，不直接连接真实企业系统。它的目标是让招聘方面试时能看到完整产品结构、API 边界和工程思路。
+当前版本已经具备前后端联调、知识库上传、SQLite 持久化、本地检索和 OpenAI-compatible 模型调用。CRM / ERP / WMS 仍是模拟数据，不会直接修改真实企业系统。

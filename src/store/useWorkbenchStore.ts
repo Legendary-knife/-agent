@@ -1,20 +1,31 @@
 import { create } from 'zustand'
 
-import { createAgentRun, fetchWorkbenchBootstrap } from '@/services/api'
-import type { AgentRun, BusinessRecord, KnowledgeDocument, Scenario, ScenarioId, ToolDefinition } from '@/types/workbench'
+import { createAgentRun, fetchWorkbenchBootstrap, uploadKnowledgeDocument } from '@/services/api'
+import type {
+  AgentRun,
+  BusinessRecord,
+  KnowledgeDocument,
+  RuntimeConfig,
+  Scenario,
+  ScenarioId,
+  ToolDefinition,
+} from '@/types/workbench'
 
 interface WorkbenchState {
   activeScenarioId: ScenarioId
   prompt: string
   isLoading: boolean
   isRunning: boolean
+  isUploading: boolean
   error: string | null
+  config: RuntimeConfig | null
   scenarios: Scenario[]
   knowledgeDocuments: KnowledgeDocument[]
   tools: ToolDefinition[]
   businessRecords: BusinessRecord[]
   runs: AgentRun[]
   loadWorkbench: () => Promise<void>
+  uploadDocument: (file: File, scope: string, owner: string) => Promise<void>
   setScenario: (scenarioId: ScenarioId) => void
   setPrompt: (prompt: string) => void
   runActiveScenario: () => Promise<void>
@@ -25,7 +36,9 @@ export const useWorkbenchStore = create<WorkbenchState>((set, get) => ({
   prompt: '',
   isLoading: false,
   isRunning: false,
+  isUploading: false,
   error: null,
+  config: null,
   scenarios: [],
   knowledgeDocuments: [],
   tools: [],
@@ -64,6 +77,22 @@ export const useWorkbenchStore = create<WorkbenchState>((set, get) => ({
     })
   },
   setPrompt: (prompt) => set({ prompt }),
+  uploadDocument: async (file, scope, owner) => {
+    set({ isUploading: true, error: null })
+
+    try {
+      const document = await uploadKnowledgeDocument(file, scope, owner)
+      set((state) => ({
+        knowledgeDocuments: [document, ...state.knowledgeDocuments.filter((item) => item.id !== document.id)],
+        isUploading: false,
+      }))
+    } catch (error) {
+      set({
+        error: error instanceof Error ? error.message : '知识库上传失败',
+        isUploading: false,
+      })
+    }
+  },
   runActiveScenario: async () => {
     const { activeScenarioId, prompt } = get()
 

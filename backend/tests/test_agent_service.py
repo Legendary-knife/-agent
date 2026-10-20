@@ -1,13 +1,20 @@
+import asyncio
 import unittest
 
 from backend.app.agent_service import create_agent_run
 from backend.app.models import AgentRunRequest
+from backend.app.storage import init_database, save_document, search_chunks
 
 
 class AgentServiceTest(unittest.TestCase):
+    def setUp(self) -> None:
+        init_database()
+
     def test_supply_run_contains_trace_tools_and_citations(self) -> None:
-        run = create_agent_run(
-            AgentRunRequest(scenarioId="supply", prompt="本周 A100 控制器是否有缺货风险？")
+        run = asyncio.run(
+            create_agent_run(
+                AgentRunRequest(scenarioId="supply", prompt="本周 A100 控制器是否有缺货风险？")
+            )
         )
 
         self.assertEqual(run.scenarioId, "supply")
@@ -15,18 +22,37 @@ class AgentServiceTest(unittest.TestCase):
         self.assertIn("库存水位查询", run.usedTools)
         self.assertEqual([step.kind for step in run.trace], ["plan", "rag", "tool", "approval", "answer"])
         self.assertEqual(run.trace[3].status, "needs_approval")
+        self.assertIn("未配置 LLM", run.answer)
 
     def test_answers_change_with_prompt_focus(self) -> None:
-        credit_run = create_agent_run(
-            AgentRunRequest(scenarioId="knowledge", prompt="海外渠道商能不能申请账期？")
+        credit_run = asyncio.run(
+            create_agent_run(
+                AgentRunRequest(scenarioId="knowledge", prompt="海外渠道商能不能申请账期？")
+            )
         )
-        product_run = create_agent_run(
-            AgentRunRequest(scenarioId="knowledge", prompt="A100 控制器有哪些产品参数和合规限制？")
+        product_run = asyncio.run(
+            create_agent_run(
+                AgentRunRequest(scenarioId="knowledge", prompt="A100 控制器有哪些产品参数和合规限制？")
+            )
         )
 
-        self.assertNotEqual(credit_run.answer, product_run.answer)
+        self.assertNotEqual(credit_run.citations, product_run.citations)
         self.assertIn("账期审批", credit_run.trace[0].detail)
         self.assertIn("产品资料", product_run.trace[0].detail)
+
+    def test_uploaded_document_is_searchable(self) -> None:
+        save_document(
+            title="售后服务政策.md",
+            file_type="MD",
+            scope="policy",
+            owner="测试",
+            source="upload",
+            text="售后服务要求：客户提交工单后，技术支持需要在 24 小时内响应，并在 72 小时内给出处理方案。",
+        )
+
+        chunks = search_chunks("客户工单多久响应", top_k=3)
+
+        self.assertTrue(any("售后服务政策" in chunk["documentTitle"] for chunk in chunks))
 
 
 if __name__ == "__main__":

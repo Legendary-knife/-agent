@@ -14,7 +14,8 @@
 - React + TypeScript + Tailwind CSS
 - Zustand 管理共享状态
 - FastAPI 提供场景、知识库、工具中心、业务数据和 Agent Run API
-- 后端 demo 数据模拟业务系统与知识库
+- SQLite 存储知识库文档和 chunk
+- OpenAI-compatible Chat Completions 生成最终回答
 
 ### Agent 编排层
 
@@ -28,17 +29,18 @@
 - 审批校验
 - 结果生成
 
-真实化建议：
+当前实现：
+
+- `backend/app/agent_service.py` 负责任务识别、RAG 检索、工具选择、上下文组装和模型调用。
+- 每次运行生成 plan、rag、tool、approval、answer 五段 trace。
+- 高风险工具会被标记为 `needs_approval`。
+- 未配置 LLM 时只返回检索结果和配置提示，不伪造模型回答。
+
+后续增强：
 
 - 用 LangGraph 表达多步骤 workflow。
 - 每个节点保留输入、输出、耗时、错误和证据。
 - 高风险工具进入 human-in-the-loop，不直接执行写操作。
-
-当前实现：
-
-- `backend/app/agent_service.py` 负责 deterministic Agent run。
-- 每次运行生成 plan、rag、tool、approval、answer 五段 trace。
-- 高风险工具会被标记为 `needs_approval`。
 
 ### 知识库层
 
@@ -52,12 +54,18 @@
 - Rerank
 - 引用溯源
 
-真实化建议：
+当前实现：
 
-- 文件解析：unstructured / pymupdf / python-docx / pandas
-- 向量库：Qdrant 或 pgvector
-- Rerank：bge-reranker 或云模型 rerank
-- 数据边界：按租户、部门、角色过滤 chunk
+- `backend/app/document_parser.py` 支持 txt、md、csv、html、pdf、docx。
+- `backend/app/retrieval.py` 使用本地哈希向量和余弦相似度做轻量检索。
+- `backend/app/storage.py` 使用 SQLite 存文档、chunk 和 embedding。
+- `backend/app/llm_client.py` 调用 OpenAI-compatible 模型。
+
+后续增强：
+
+- 向量库升级为 Qdrant 或 pgvector。
+- Rerank 升级为 bge-reranker 或云模型 rerank。
+- 数据边界升级为按租户、部门、角色过滤 chunk。
 
 ### 工具调用层
 
@@ -90,8 +98,10 @@
 当前后端提供这些接口：
 
 - `GET /api/health`
+- `GET /api/config`
 - `GET /api/scenarios`
 - `GET /api/knowledge`
+- `POST /api/knowledge/upload`
 - `GET /api/tools`
 - `GET /api/business-records`
 - `GET /api/runs`
@@ -109,10 +119,10 @@
 
 ### 第二阶段：接入持久化和向量检索
 
-- 新增 PostgreSQL 表结构。
-- 新增文件上传和解析任务。
-- 新增 pgvector/Qdrant 检索。
-- 把后端 demo 数据替换为数据库和向量库数据。
+- 已完成 SQLite 持久化。
+- 已完成文件上传和解析任务。
+- 已完成本地轻量向量检索。
+- 下一步把 SQLite 检索升级为 pgvector/Qdrant。
 
 ### 第三阶段：Agent 工程化
 
