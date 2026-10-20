@@ -13,7 +13,8 @@
 
 - React + TypeScript + Tailwind CSS
 - Zustand 管理共享状态
-- 本地 mock 数据模拟业务系统与知识库
+- FastAPI 提供场景、知识库、工具中心、业务数据和 Agent Run API
+- 后端 demo 数据模拟业务系统与知识库
 
 ### Agent 编排层
 
@@ -32,6 +33,12 @@
 - 用 LangGraph 表达多步骤 workflow。
 - 每个节点保留输入、输出、耗时、错误和证据。
 - 高风险工具进入 human-in-the-loop，不直接执行写操作。
+
+当前实现：
+
+- `backend/app/agent_service.py` 负责 deterministic Agent run。
+- 每次运行生成 plan、rag、tool、approval、answer 五段 trace。
+- 高风险工具会被标记为 `needs_approval`。
 
 ### 知识库层
 
@@ -78,23 +85,34 @@
 - ERP 未交付订单
 - WMS 库存水位
 
-## 2. 开发步骤
+## 2. API 边界
+
+当前后端提供这些接口：
+
+- `GET /api/health`
+- `GET /api/scenarios`
+- `GET /api/knowledge`
+- `GET /api/tools`
+- `GET /api/business-records`
+- `GET /api/runs`
+- `POST /api/runs`
+
+## 3. 开发步骤
 
 ### 第一阶段：本地可演示 MVP
 
 - 完成工作台 UI。
 - 完成三个业务场景。
-- 完成 Agent run mock。
+- 完成 FastAPI Agent run API。
 - 完成 trace、引用和工具调用展示。
 - 完成 README 和架构说明。
 
-### 第二阶段：接入真实后端
+### 第二阶段：接入持久化和向量检索
 
-- 新增 FastAPI 服务。
 - 新增 PostgreSQL 表结构。
 - 新增文件上传和解析任务。
 - 新增 pgvector/Qdrant 检索。
-- 把前端 mock 数据替换为 API。
+- 把后端 demo 数据替换为数据库和向量库数据。
 
 ### 第三阶段：Agent 工程化
 
@@ -111,7 +129,7 @@
 - Agent 评测集和回归测试。
 - MCP 工具市场。
 
-## 3. 面试重点
+## 4. 面试重点
 
 讲项目时建议按下面顺序：
 

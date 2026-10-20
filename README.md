@@ -18,19 +18,29 @@
 - Tailwind CSS
 - Zustand
 - Vitest
+- FastAPI
+- Uvicorn
+- Python unittest
 
 ## 本地运行
 
 ```bash
 npm install
+python3 -m pip install -r requirements.txt
 npm run dev
 ```
+
+`npm run dev` 会同时启动：
+
+- Web: `http://localhost:5173`
+- API: `http://127.0.0.1:8000`
 
 ## 验证
 
 ```bash
 npm run check
 npm run test
+npm run test:api
 npm run build
 ```
 
@@ -38,9 +48,16 @@ npm run build
 
 这个项目不是普通聊天机器人，而是一个企业 Agent 工作台原型。核心设计是把用户请求拆成可观测的执行链路：先做任务理解，再做 RAG 检索和 rerank，然后通过 Tool Registry 调用业务系统工具，最后输出带引用、带审批边界、可追踪的业务建议。
 
-后端真实化路线可以扩展为：
+当前已经接入 FastAPI 后端：
 
-- FastAPI 提供 Agent、知识库、工具中心和审计 API。
+- `/api/scenarios` 返回演示场景。
+- `/api/knowledge` 返回知识库文档。
+- `/api/tools` 返回工具中心定义。
+- `/api/business-records` 返回 CRM / ERP / WMS 模拟数据。
+- `/api/runs` 创建和读取 Agent 运行记录。
+
+后续真实化路线可以继续扩展为：
+
 - PostgreSQL 存用户、文档元数据、运行记录和权限数据。
 - Redis 存运行状态、任务锁和短期缓存。
 - Qdrant 或 pgvector 存向量索引。
@@ -49,4 +66,4 @@ npm run build
 
 ## 项目边界
 
-当前版本是前端可演示 MVP，业务数据和 Agent 运行结果使用本地 mock。它的目标是让招聘方面试时能看到完整产品结构和工程思路，不直接连接真实企业系统。
+当前版本已经具备前后端联调闭环，业务数据仍使用后端 demo 数据，不直接连接真实企业系统。它的目标是让招聘方面试时能看到完整产品结构、API 边界和工程思路。

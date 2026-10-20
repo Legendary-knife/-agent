@@ -1,7 +1,7 @@
 import { AlertTriangle, PlugZap } from 'lucide-react'
 
 import { Section } from '@/components/Section'
-import { toolDefinitions } from '@/services/demoData'
+import type { ToolDefinition } from '@/types/workbench'
 import { cn } from '@/utils/cn'
 
 const riskLabel = {
@@ -10,7 +10,11 @@ const riskLabel = {
   high: '需审批',
 }
 
-export function ToolRegistry() {
+interface ToolRegistryProps {
+  tools: ToolDefinition[]
+}
+
+export function ToolRegistry({ tools }: ToolRegistryProps) {
   return (
     <Section
       icon={PlugZap}
@@ -18,7 +22,7 @@ export function ToolRegistry() {
       description="所有外部调用都通过统一 schema、权限白名单和错误处理。"
     >
       <div className="space-y-2">
-        {toolDefinitions.map((tool) => (
+        {tools.map((tool) => (
           <div key={tool.id} className="rounded-lg border border-line bg-[#fbfcf8] p-3">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">

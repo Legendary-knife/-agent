@@ -1,7 +1,6 @@
 import { File, FileSpreadsheet, FileText, Globe2, Library } from 'lucide-react'
 
 import { Section } from '@/components/Section'
-import { knowledgeDocuments } from '@/services/demoData'
 import type { KnowledgeDocument } from '@/types/workbench'
 
 const iconByType: Record<KnowledgeDocument['type'], typeof File> = {
@@ -11,7 +10,11 @@ const iconByType: Record<KnowledgeDocument['type'], typeof File> = {
   HTML: Globe2,
 }
 
-export function KnowledgePanel() {
+interface KnowledgePanelProps {
+  documents: KnowledgeDocument[]
+}
+
+export function KnowledgePanel({ documents }: KnowledgePanelProps) {
   return (
     <Section
       icon={Library}
@@ -19,7 +22,7 @@ export function KnowledgePanel() {
       description="演示 RAG 的关键不是上传按钮，而是切片、召回、重排和引用。"
     >
       <div className="space-y-2">
-        {knowledgeDocuments.map((document) => {
+        {documents.map((document) => {
           const Icon = iconByType[document.type]
 
           return (

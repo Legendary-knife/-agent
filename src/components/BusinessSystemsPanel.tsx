@@ -1,7 +1,7 @@
 import { DatabaseZap } from 'lucide-react'
 
 import { Section } from '@/components/Section'
-import { businessRecords } from '@/services/demoData'
+import type { BusinessRecord } from '@/types/workbench'
 import { cn } from '@/utils/cn'
 
 const sourceStyle = {
@@ -10,7 +10,11 @@ const sourceStyle = {
   WMS: 'bg-[#eef7f1] text-moss',
 }
 
-export function BusinessSystemsPanel() {
+interface BusinessSystemsPanelProps {
+  records: BusinessRecord[]
+}
+
+export function BusinessSystemsPanel({ records }: BusinessSystemsPanelProps) {
   return (
     <Section
       icon={DatabaseZap}
@@ -18,7 +22,7 @@ export function BusinessSystemsPanel() {
       description="用 mock 系统证明你理解 ERP、WMS、CRM 集成边界。"
     >
       <div className="space-y-2">
-        {businessRecords.map((record) => (
+        {records.map((record) => (
           <div key={record.id} className="rounded-lg border border-line bg-[#fbfcf8] p-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="text-sm font-semibold text-ink">{record.title}</p>

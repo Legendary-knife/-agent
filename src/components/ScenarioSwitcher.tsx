@@ -1,15 +1,15 @@
 import { CheckCircle2 } from 'lucide-react'
 
-import { scenarios } from '@/services/demoData'
-import type { ScenarioId } from '@/types/workbench'
+import type { Scenario, ScenarioId } from '@/types/workbench'
 import { cn } from '@/utils/cn'
 
 interface ScenarioSwitcherProps {
+  scenarios: Scenario[]
   activeScenarioId: ScenarioId
   onChange: (scenarioId: ScenarioId) => void
 }
 
-export function ScenarioSwitcher({ activeScenarioId, onChange }: ScenarioSwitcherProps) {
+export function ScenarioSwitcher({ scenarios, activeScenarioId, onChange }: ScenarioSwitcherProps) {
   return (
     <div className="grid gap-2">
       {scenarios.map((scenario) => {

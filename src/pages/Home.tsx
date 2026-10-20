@@ -1,4 +1,5 @@
-import { Activity, Bot, Database, FileSearch, Layers3, LockKeyhole, PlugZap } from 'lucide-react'
+import { useEffect } from 'react'
+import { Activity, Bot, Database, FileSearch, Layers3, LockKeyhole, Loader2, PlugZap } from 'lucide-react'
 
 import { AgentConsole } from '@/components/AgentConsole'
 import { ArchitecturePanel } from '@/components/ArchitecturePanel'
@@ -8,15 +9,31 @@ import { MetricCard } from '@/components/MetricCard'
 import { RoadmapPanel } from '@/components/RoadmapPanel'
 import { ScenarioSwitcher } from '@/components/ScenarioSwitcher'
 import { ToolRegistry } from '@/components/ToolRegistry'
-import { scenarios, workbenchMetrics } from '@/services/demoData'
 import { useWorkbenchStore } from '@/store/useWorkbenchStore'
 
 const metricIcons = [FileSearch, PlugZap, Layers3, LockKeyhole]
 
 export default function Home() {
   const activeScenarioId = useWorkbenchStore((state) => state.activeScenarioId)
+  const scenarios = useWorkbenchStore((state) => state.scenarios)
+  const knowledgeDocuments = useWorkbenchStore((state) => state.knowledgeDocuments)
+  const tools = useWorkbenchStore((state) => state.tools)
+  const businessRecords = useWorkbenchStore((state) => state.businessRecords)
   const setScenario = useWorkbenchStore((state) => state.setScenario)
+  const isLoading = useWorkbenchStore((state) => state.isLoading)
+  const loadWorkbench = useWorkbenchStore((state) => state.loadWorkbench)
   const runs = useWorkbenchStore((state) => state.runs)
+  const chunkCount = knowledgeDocuments.reduce((sum, document) => sum + document.chunks, 0)
+  const metrics = [
+    { label: '知识文档', value: String(knowledgeDocuments.length), hint: `已切分 ${chunkCount} 个 chunk` },
+    { label: '可调用工具', value: String(tools.length), hint: '覆盖 CRM / ERP / WMS' },
+    { label: '演示场景', value: String(scenarios.length), hint: '知识库、外贸、供应链' },
+    { label: '审计链路', value: '100%', hint: '每次运行保留 trace' },
+  ]
+
+  useEffect(() => {
+    void loadWorkbench()
+  }, [loadWorkbench])
 
   return (
     <main className="min-h-screen bg-canvas text-ink">
@@ -43,6 +60,15 @@ export default function Home() {
         </div>
       </header>
 
+      {isLoading ? (
+        <div className="mx-auto max-w-[1520px] px-4 py-4 lg:px-6">
+          <div className="flex items-center gap-2 rounded-lg border border-line bg-white p-4 text-sm text-muted shadow-sm">
+            <Loader2 className="h-4 w-4 animate-spin text-moss" />
+            正在连接 FastAPI 后端并加载工作台数据
+          </div>
+        </div>
+      ) : null}
+
       <div className="mx-auto grid max-w-[1520px] gap-4 px-4 py-4 lg:px-6 xl:grid-cols-[320px_minmax(0,1fr)_390px]">
         <aside className="space-y-4">
           <section className="rounded-lg border border-line bg-white p-4 shadow-sm">
@@ -56,7 +82,7 @@ export default function Home() {
               </span>
             </div>
             <div className="mt-4">
-              <ScenarioSwitcher activeScenarioId={activeScenarioId} onChange={setScenario} />
+              <ScenarioSwitcher scenarios={scenarios} activeScenarioId={activeScenarioId} onChange={setScenario} />
             </div>
           </section>
           <RoadmapPanel />
@@ -64,7 +90,7 @@ export default function Home() {
 
         <div className="space-y-4">
           <div className="grid gap-3 md:grid-cols-4">
-            {workbenchMetrics.map((metric, index) => (
+            {metrics.map((metric, index) => (
               <MetricCard
                 key={metric.label}
                 icon={metricIcons[index]}
@@ -79,9 +105,9 @@ export default function Home() {
         </div>
 
         <aside className="space-y-4">
-          <KnowledgePanel />
-          <ToolRegistry />
-          <BusinessSystemsPanel />
+          <KnowledgePanel documents={knowledgeDocuments} />
+          <ToolRegistry tools={tools} />
+          <BusinessSystemsPanel records={businessRecords} />
         </aside>
       </div>
     </main>

@@ -1,7 +1,6 @@
 import { Bot, ClipboardList, FileText, Loader2, Play, Quote, ShieldCheck, Wrench } from 'lucide-react'
 
 import { estimateReadiness } from '@/features/agent/agentSimulator'
-import { scenarios } from '@/services/demoData'
 import { useWorkbenchStore } from '@/store/useWorkbenchStore'
 import { TraceTimeline } from '@/components/TraceTimeline'
 import { cn } from '@/utils/cn'
@@ -9,7 +8,9 @@ import { cn } from '@/utils/cn'
 export function AgentConsole() {
   const activeScenarioId = useWorkbenchStore((state) => state.activeScenarioId)
   const prompt = useWorkbenchStore((state) => state.prompt)
+  const scenarios = useWorkbenchStore((state) => state.scenarios)
   const isRunning = useWorkbenchStore((state) => state.isRunning)
+  const error = useWorkbenchStore((state) => state.error)
   const runs = useWorkbenchStore((state) => state.runs)
   const setPrompt = useWorkbenchStore((state) => state.setPrompt)
   const runActiveScenario = useWorkbenchStore((state) => state.runActiveScenario)
@@ -17,6 +18,17 @@ export function AgentConsole() {
   const scenario = scenarios.find((item) => item.id === activeScenarioId) ?? scenarios[0]
   const latestRun = runs.find((run) => run.scenarioId === activeScenarioId) ?? runs[0] ?? null
   const readiness = estimateReadiness(latestRun)
+
+  if (!scenario) {
+    return (
+      <section className="rounded-lg border border-line bg-white p-4 shadow-sm">
+        <div className="flex items-center gap-2 text-sm text-muted">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          正在加载 Agent 场景
+        </div>
+      </section>
+    )
+  }
 
   return (
     <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
@@ -60,7 +72,7 @@ export function AgentConsole() {
             </div>
             <button
               type="button"
-              onClick={runActiveScenario}
+              onClick={() => void runActiveScenario()}
               disabled={isRunning || prompt.trim().length === 0}
               className={cn(
                 'inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm font-semibold text-white transition',
@@ -72,6 +84,12 @@ export function AgentConsole() {
             </button>
           </div>
         </div>
+
+        {error ? (
+          <div className="mt-3 rounded-lg border border-[#f0d6c8] bg-[#fff7f2] p-3 text-xs leading-5 text-clay">
+            {error}
+          </div>
+        ) : null}
 
         <div className="mt-4 grid gap-3 lg:grid-cols-3">
           <SignalCard icon={FileText} label="RAG" value="带引用回答" />

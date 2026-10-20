@@ -1,43 +1,85 @@
 import { create } from 'zustand'
 
-import { runAgentScenario } from '@/features/agent/agentSimulator'
-import { scenarios } from '@/services/demoData'
-import type { AgentRun, ScenarioId } from '@/types/workbench'
+import { createAgentRun, fetchWorkbenchBootstrap } from '@/services/api'
+import type { AgentRun, BusinessRecord, KnowledgeDocument, Scenario, ScenarioId, ToolDefinition } from '@/types/workbench'
 
 interface WorkbenchState {
   activeScenarioId: ScenarioId
   prompt: string
+  isLoading: boolean
   isRunning: boolean
+  error: string | null
+  scenarios: Scenario[]
+  knowledgeDocuments: KnowledgeDocument[]
+  tools: ToolDefinition[]
+  businessRecords: BusinessRecord[]
   runs: AgentRun[]
+  loadWorkbench: () => Promise<void>
   setScenario: (scenarioId: ScenarioId) => void
   setPrompt: (prompt: string) => void
-  runActiveScenario: () => void
+  runActiveScenario: () => Promise<void>
 }
 
 export const useWorkbenchStore = create<WorkbenchState>((set, get) => ({
   activeScenarioId: 'knowledge',
-  prompt: scenarios[0].prompt,
+  prompt: '',
+  isLoading: false,
   isRunning: false,
+  error: null,
+  scenarios: [],
+  knowledgeDocuments: [],
+  tools: [],
+  businessRecords: [],
   runs: [],
+  loadWorkbench: async () => {
+    const current = get()
+    if (current.isLoading || current.scenarios.length > 0) {
+      return
+    }
+
+    set({ isLoading: true, error: null })
+
+    try {
+      const data = await fetchWorkbenchBootstrap()
+      const activeScenario = data.scenarios[0]
+
+      set({
+        ...data,
+        activeScenarioId: activeScenario?.id ?? 'knowledge',
+        prompt: activeScenario?.prompt ?? '',
+        isLoading: false,
+      })
+    } catch (error) {
+      set({
+        error: error instanceof Error ? error.message : '后端接口请求失败',
+        isLoading: false,
+      })
+    }
+  },
   setScenario: (scenarioId) => {
-    const scenario = scenarios.find((item) => item.id === scenarioId) ?? scenarios[0]
+    const scenario = get().scenarios.find((item) => item.id === scenarioId)
     set({
-      activeScenarioId: scenario.id,
-      prompt: scenario.prompt,
+      activeScenarioId: scenarioId,
+      prompt: scenario?.prompt ?? '',
     })
   },
   setPrompt: (prompt) => set({ prompt }),
-  runActiveScenario: () => {
+  runActiveScenario: async () => {
     const { activeScenarioId, prompt } = get()
-    const scenario = scenarios.find((item) => item.id === activeScenarioId) ?? scenarios[0]
 
-    set({ isRunning: true })
-    window.setTimeout(() => {
-      const run = runAgentScenario(scenario, prompt)
+    set({ isRunning: true, error: null })
+
+    try {
+      const run = await createAgentRun(activeScenarioId, prompt)
       set((state) => ({
         runs: [run, ...state.runs].slice(0, 8),
         isRunning: false,
       }))
-    }, 620)
+    } catch (error) {
+      set({
+        error: error instanceof Error ? error.message : 'Agent 运行失败',
+        isRunning: false,
+      })
+    }
   },
 }))
