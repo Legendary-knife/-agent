@@ -1,5 +1,6 @@
 import asyncio
 import unittest
+from unittest.mock import patch
 
 from backend.app.agent_service import create_agent_run
 from backend.app.models import AgentRunRequest
@@ -8,7 +9,19 @@ from backend.app.storage import init_database, save_document, search_chunks
 
 class AgentServiceTest(unittest.TestCase):
     def setUp(self) -> None:
+        self.env_patcher = patch.dict(
+            "os.environ",
+            {
+                "LLM_BASE_URL": "",
+                "LLM_API_KEY": "",
+                "LLM_MODEL": "",
+            },
+        )
+        self.env_patcher.start()
         init_database()
+
+    def tearDown(self) -> None:
+        self.env_patcher.stop()
 
     def test_supply_run_contains_trace_tools_and_citations(self) -> None:
         run = asyncio.run(
