@@ -61,6 +61,7 @@ cp .env.example .env
 LLM_BASE_URL=https://api.deepseek.com
 LLM_API_KEY=你的真实 Key
 LLM_MODEL=deepseek-chat
+WORKBENCH_DATA_DIR=./data
 ```
 
 不配置模型也能上传知识库和检索，但系统会明确提示“未配置 LLM”，不会假装已经生成模型回答。
@@ -173,3 +174,21 @@ enterprise-ai-agent-workbench/
 ## 项目边界
 
 当前版本已经具备前后端联调、知识库上传、SQLite 持久化、本地检索和 OpenAI-compatible 模型调用。CRM / ERP / WMS 仍是模拟数据，不会直接修改真实企业系统。
+
+## 知识库存在哪里
+
+默认放在仓库目录下：
+
+```text
+data/
+├── agent_workbench.sqlite3   # 文档元数据、chunk、embedding
+└── uploads/                  # 上传的原始文件
+```
+
+`data/` 已加入 `.gitignore`，不会把你的业务资料提交到 GitHub。
+
+如果要换目录，改 `.env`：
+
+```env
+WORKBENCH_DATA_DIR=/absolute/path/to/your/knowledge-data
+```

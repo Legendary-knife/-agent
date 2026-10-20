@@ -104,6 +104,11 @@ export function KnowledgePanel({ documents }: KnowledgePanelProps) {
                   <p className="mt-1 text-xs leading-5 text-muted">
                     {document.owner} · {document.chunks} chunks · {document.updatedAt}
                   </p>
+                  {document.filePath ? (
+                    <p className="mt-1 truncate font-mono text-[11px] leading-5 text-[#6b755f]">
+                      {document.filePath}
+                    </p>
+                  ) : null}
                 </div>
               </div>
             </div>

@@ -56,3 +56,4 @@ class KnowledgeDocumentResponse(BaseModel):
     owner: str
     updatedAt: str
     source: str
+    filePath: Optional[str] = None

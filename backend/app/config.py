@@ -6,10 +6,12 @@ from dotenv import load_dotenv
 
 
 ROOT_DIR = Path(__file__).resolve().parents[2]
-DATA_DIR = ROOT_DIR / "data"
-DB_PATH = DATA_DIR / "agent_workbench.sqlite3"
 
 load_dotenv(ROOT_DIR / ".env")
+
+DATA_DIR = Path(os.getenv("WORKBENCH_DATA_DIR", str(ROOT_DIR / "data"))).expanduser()
+DB_PATH = DATA_DIR / "agent_workbench.sqlite3"
+UPLOAD_DIR = DATA_DIR / "uploads"
 
 
 @dataclass(frozen=True)

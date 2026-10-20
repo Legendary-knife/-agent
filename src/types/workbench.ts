@@ -23,6 +23,7 @@ export interface KnowledgeDocument {
   owner: string
   updatedAt: string
   source: 'demo' | 'upload' | string
+  filePath?: string | null
 }
 
 export interface ToolDefinition {

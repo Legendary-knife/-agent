@@ -1,11 +1,12 @@
 import json
+import re
 import sqlite3
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
 from uuid import uuid4
 
-from backend.app.config import DATA_DIR, DB_PATH
+from backend.app.config import DATA_DIR, DB_PATH, ROOT_DIR, UPLOAD_DIR
 from backend.app.data import KNOWLEDGE_DOCUMENTS
 from backend.app.retrieval import chunk_text, cosine_similarity, embed_text
 
@@ -52,10 +53,17 @@ def init_database() -> None:
                 scope TEXT NOT NULL,
                 owner TEXT NOT NULL,
                 updated_at TEXT NOT NULL,
-                source TEXT NOT NULL
+                source TEXT NOT NULL,
+                file_path TEXT
             )
             """
         )
+        columns = {
+            row["name"]
+            for row in connection.execute("PRAGMA table_info(documents)").fetchall()
+        }
+        if "file_path" not in columns:
+            connection.execute("ALTER TABLE documents ADD COLUMN file_path TEXT")
         connection.execute(
             """
             CREATE TABLE IF NOT EXISTS chunks (
@@ -93,6 +101,19 @@ def seed_demo_documents() -> None:
         )
 
 
+def sanitize_filename(filename: str) -> str:
+    basename = Path(filename).name or "uploaded.txt"
+    return re.sub(r"[^0-9A-Za-z\u4e00-\u9fff._-]+", "_", basename)
+
+
+def save_uploaded_file(filename: str, content: bytes) -> str:
+    UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+    stored_name = f"{uuid4().hex[:12]}_{sanitize_filename(filename)}"
+    stored_path = UPLOAD_DIR / stored_name
+    stored_path.write_bytes(content)
+    return str(stored_path.relative_to(ROOT_DIR))
+
+
 def save_document(
     title: str,
     file_type: str,
@@ -102,6 +123,7 @@ def save_document(
     text: str,
     document_id: Optional[str] = None,
     updated_at: Optional[str] = None,
+    file_path: Optional[str] = None,
 ) -> dict:
     chunks = chunk_text(text)
     if not chunks:
@@ -114,10 +136,10 @@ def save_document(
     with get_connection() as connection:
         connection.execute(
             """
-            INSERT OR REPLACE INTO documents (id, title, type, scope, owner, updated_at, source)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            INSERT OR REPLACE INTO documents (id, title, type, scope, owner, updated_at, source, file_path)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """,
-            (resolved_document_id, title, normalized_type, scope, owner, now, source),
+            (resolved_document_id, title, normalized_type, scope, owner, now, source, file_path),
         )
         connection.execute("DELETE FROM chunks WHERE document_id = ?", (resolved_document_id,))
         for index, chunk in enumerate(chunks):
@@ -145,6 +167,7 @@ def save_document(
         "owner": owner,
         "updatedAt": now,
         "source": source,
+        "filePath": file_path,
     }
 
 
@@ -152,7 +175,7 @@ def list_documents() -> list[dict]:
     with get_connection() as connection:
         rows = connection.execute(
             """
-            SELECT d.id, d.title, d.type, d.scope, d.owner, d.updated_at, d.source, COUNT(c.id) AS chunks
+            SELECT d.id, d.title, d.type, d.scope, d.owner, d.updated_at, d.source, d.file_path, COUNT(c.id) AS chunks
             FROM documents d
             LEFT JOIN chunks c ON c.document_id = d.id
             GROUP BY d.id
@@ -170,6 +193,7 @@ def list_documents() -> list[dict]:
             "owner": row["owner"],
             "updatedAt": row["updated_at"],
             "source": row["source"],
+            "filePath": row["file_path"],
         }
         for row in rows
     ]

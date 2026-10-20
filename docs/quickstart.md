@@ -49,6 +49,7 @@ cp .env.example .env
 LLM_BASE_URL=https://api.deepseek.com
 LLM_API_KEY=你的真实 Key
 LLM_MODEL=deepseek-chat
+WORKBENCH_DATA_DIR=./data
 ```
 
 说明：如果你不配置模型，系统仍然能上传文档、切分文档、检索知识库，但不会假装生成模型回答。页面顶部会显示“LLM 未配置”，Agent 输出也会提示缺少模型配置。
@@ -107,6 +108,24 @@ A100 控制器有哪些产品参数和合规限制？
 3. 计算本地哈希向量。
 4. 写入 `data/agent_workbench.sqlite3`。
 5. 下一次运行 Agent 时参与检索。
+
+原始文件会保存到：
+
+```text
+data/uploads/
+```
+
+检索索引和 chunk 会保存到：
+
+```text
+data/agent_workbench.sqlite3
+```
+
+这两个路径默认就在仓库目录下，但 `data/` 已加入 `.gitignore`，不会被提交到 GitHub。你也可以在 `.env` 里改：
+
+```env
+WORKBENCH_DATA_DIR=/absolute/path/to/your/knowledge-data
+```
 
 支持格式：
 
