@@ -25,9 +25,15 @@ export function KnowledgePanel({ documents }: KnowledgePanelProps) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [uploadMessage, setUploadMessage] = useState('')
   const [inputKey, setInputKey] = useState(0)
+  const [isDragging, setIsDragging] = useState(false)
   const uploadDocument = useWorkbenchStore((state) => state.uploadDocument)
   const isUploading = useWorkbenchStore((state) => state.isUploading)
   const error = useWorkbenchStore((state) => state.error)
+
+  const selectFile = (file: File | null) => {
+    setSelectedFile(file)
+    setUploadMessage('')
+  }
 
   const handleUpload = async () => {
     if (!selectedFile || isUploading) {
@@ -53,21 +59,45 @@ export function KnowledgePanel({ documents }: KnowledgePanelProps) {
     >
       <div className="mb-3 rounded-lg border border-line bg-[#fbfcf8] p-3">
         <div className="grid gap-2">
-          <label className="text-xs font-semibold text-[#4d594c]" htmlFor="knowledge-upload">
-            上传知识文件
-          </label>
           <input
             key={inputKey}
             id="knowledge-upload"
             type="file"
             accept=".txt,.md,.csv,.html,.pdf,.docx"
             disabled={isUploading}
-            onChange={(event) => {
-              setSelectedFile(event.target.files?.[0] ?? null)
-              setUploadMessage('')
-            }}
-            className="w-full rounded-md border border-line bg-white px-2 py-2 text-xs text-muted file:mr-3 file:rounded-md file:border-0 file:bg-moss file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-white"
+            onChange={(event) => selectFile(event.target.files?.[0] ?? null)}
+            className="sr-only"
           />
+          <label
+            htmlFor="knowledge-upload"
+            onDragOver={(event) => {
+              event.preventDefault()
+              setIsDragging(true)
+            }}
+            onDragLeave={() => setIsDragging(false)}
+            onDrop={(event) => {
+              event.preventDefault()
+              setIsDragging(false)
+              selectFile(event.dataTransfer.files?.[0] ?? null)
+            }}
+            className={cn(
+              'flex min-h-[92px] cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border border-dashed bg-white px-3 py-4 text-center transition',
+              isDragging ? 'border-moss bg-[#eef7f1]' : 'border-line hover:border-moss hover:bg-[#fbfff8]',
+              isUploading ? 'cursor-not-allowed opacity-70' : '',
+            )}
+          >
+            <div className="grid h-9 w-9 place-items-center rounded-md bg-[#eef7f1] text-moss">
+              <Upload className="h-4 w-4" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-ink">
+                {selectedFile ? selectedFile.name : '点击选择文件，或拖拽到这里'}
+              </p>
+              <p className="mt-1 text-[11px] leading-5 text-muted">
+                支持 txt、md、csv、html、pdf、docx
+              </p>
+            </div>
+          </label>
           <div className="grid grid-cols-2 gap-2">
             <select
               value={scope}
