@@ -192,3 +192,21 @@ data/
 ```env
 WORKBENCH_DATA_DIR=/absolute/path/to/your/knowledge-data
 ```
+
+## 同步资料到指定 GitHub 仓库
+
+默认不会自动上传知识库资料。确认目标仓库可以保存这些资料后，手动执行：
+
+```bash
+CONFIRM_UPLOAD_KNOWLEDGE=YES bash scripts/sync_knowledge_to_github.sh \
+  https://github.com/你的用户名/你的知识库仓库.git \
+  main \
+  knowledge-base
+```
+
+脚本会同步：
+
+- `data/uploads/` 原始文件
+- `knowledge-base/manifest.json` 文档元数据
+
+不会同步 `.env` 和模型 Key。

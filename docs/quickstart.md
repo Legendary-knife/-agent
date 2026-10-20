@@ -145,6 +145,29 @@ rm -rf data
 
 下次启动会重新生成基础示例知识库。
 
+## 如何同步到指定 GitHub 仓库
+
+默认不会自动把知识库资料传到 GitHub，因为这些文件可能包含业务敏感信息。
+
+确认目标仓库可以保存这些资料后，再执行：
+
+```bash
+CONFIRM_UPLOAD_KNOWLEDGE=YES bash scripts/sync_knowledge_to_github.sh \
+  https://github.com/你的用户名/你的知识库仓库.git \
+  main \
+  knowledge-base
+```
+
+它会把这些内容推到目标仓库：
+
+```text
+knowledge-base/
+├── uploads/        # 原始上传文件
+└── manifest.json   # 文档元数据
+```
+
+不会上传 `.env`，也不会上传模型 Key。
+
 ## 使用人员怎么用
 
 使用人员不用关心代码，把它当成一个业务工作台：
