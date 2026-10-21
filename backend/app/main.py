@@ -12,7 +12,15 @@ from backend.app.models import (
     KnowledgeDocumentResponse,
     RuntimeConfigResponse,
 )
-from backend.app.storage import init_database, list_documents, save_document, save_uploaded_file
+from backend.app.storage import (
+    create_document_id,
+    init_database,
+    list_documents,
+    save_document,
+    save_repository_knowledge_files,
+    save_uploaded_file,
+    write_repository_manifest,
+)
 
 app = FastAPI(
     title="Enterprise AI Agent Workbench API",
@@ -73,16 +81,22 @@ async def upload_knowledge_document(
         content = await file.read()
         filename = file.filename or "uploaded.txt"
         text, file_type = extract_text(filename, content)
-        file_path = save_uploaded_file(filename, content)
-        return save_document(
+        document_id = create_document_id()
+        save_uploaded_file(filename, content)
+        file_path, text_path = save_repository_knowledge_files(document_id, filename, content, text)
+        document = save_document(
             title=filename,
             file_type=file_type,
             scope=scope,
             owner=owner,
             source="upload",
             text=text,
+            document_id=document_id,
             file_path=file_path,
+            text_path=text_path,
         )
+        write_repository_manifest()
+        return document
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
 

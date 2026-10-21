@@ -181,11 +181,16 @@ enterprise-ai-agent-workbench/
 
 ```text
 data/
-├── agent_workbench.sqlite3   # 文档元数据、chunk、embedding
-└── uploads/                  # 上传的原始文件
+├── agent_workbench.sqlite3   # 本地检索库：文档元数据、chunk、embedding
+└── uploads/                  # 本地运行副本：上传的原始文件
+
+knowledge-base/
+├── uploads/                  # 可提交到 GitHub 的原始文件
+├── extracted/                # 可提交到 GitHub 的解析文本
+└── manifest.json             # 可提交到 GitHub 的文档清单
 ```
 
-`data/` 已加入 `.gitignore`，不会把你的业务资料提交到 GitHub。
+`data/` 已加入 `.gitignore`，只做本地运行数据。`knowledge-base/` 不忽略，上传成功后可以随项目主仓库一起提交和推送。
 
 如果要换目录，改 `.env`：
 
@@ -206,7 +211,8 @@ CONFIRM_UPLOAD_KNOWLEDGE=YES bash scripts/sync_knowledge_to_github.sh \
 
 脚本会同步：
 
-- `data/uploads/` 原始文件
+- `knowledge-base/uploads/` 原始文件
+- `knowledge-base/extracted/` 解析文本
 - `knowledge-base/manifest.json` 文档元数据
 
 不会同步 `.env` 和模型 Key。

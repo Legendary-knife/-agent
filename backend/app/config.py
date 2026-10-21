@@ -12,6 +12,10 @@ load_dotenv(ROOT_DIR / ".env")
 DATA_DIR = Path(os.getenv("WORKBENCH_DATA_DIR", str(ROOT_DIR / "data"))).expanduser()
 DB_PATH = DATA_DIR / "agent_workbench.sqlite3"
 UPLOAD_DIR = DATA_DIR / "uploads"
+REPO_KNOWLEDGE_DIR = ROOT_DIR / "knowledge-base"
+REPO_UPLOAD_DIR = REPO_KNOWLEDGE_DIR / "uploads"
+REPO_TEXT_DIR = REPO_KNOWLEDGE_DIR / "extracted"
+REPO_MANIFEST_PATH = REPO_KNOWLEDGE_DIR / "manifest.json"
 
 
 @dataclass(frozen=True)

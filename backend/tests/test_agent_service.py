@@ -1,7 +1,10 @@
 import asyncio
+from pathlib import Path
+from tempfile import TemporaryDirectory
 import unittest
 from unittest.mock import patch
 
+import backend.app.storage as storage
 from backend.app.agent_service import create_agent_run
 from backend.app.models import AgentRunRequest
 from backend.app.storage import init_database, save_document, search_chunks
@@ -9,6 +12,24 @@ from backend.app.storage import init_database, save_document, search_chunks
 
 class AgentServiceTest(unittest.TestCase):
     def setUp(self) -> None:
+        self.temp_dir = TemporaryDirectory()
+        self.original_paths = {
+            "DATA_DIR": storage.DATA_DIR,
+            "DB_PATH": storage.DB_PATH,
+            "UPLOAD_DIR": storage.UPLOAD_DIR,
+            "REPO_KNOWLEDGE_DIR": storage.REPO_KNOWLEDGE_DIR,
+            "REPO_UPLOAD_DIR": storage.REPO_UPLOAD_DIR,
+            "REPO_TEXT_DIR": storage.REPO_TEXT_DIR,
+            "REPO_MANIFEST_PATH": storage.REPO_MANIFEST_PATH,
+        }
+        temp_root = Path(self.temp_dir.name)
+        storage.DATA_DIR = temp_root / "data"
+        storage.DB_PATH = storage.DATA_DIR / "agent_workbench.sqlite3"
+        storage.UPLOAD_DIR = storage.DATA_DIR / "uploads"
+        storage.REPO_KNOWLEDGE_DIR = temp_root / "knowledge-base"
+        storage.REPO_UPLOAD_DIR = storage.REPO_KNOWLEDGE_DIR / "uploads"
+        storage.REPO_TEXT_DIR = storage.REPO_KNOWLEDGE_DIR / "extracted"
+        storage.REPO_MANIFEST_PATH = storage.REPO_KNOWLEDGE_DIR / "manifest.json"
         self.env_patcher = patch.dict(
             "os.environ",
             {
@@ -22,6 +43,9 @@ class AgentServiceTest(unittest.TestCase):
 
     def tearDown(self) -> None:
         self.env_patcher.stop()
+        for key, value in self.original_paths.items():
+            setattr(storage, key, value)
+        self.temp_dir.cleanup()
 
     def test_supply_run_contains_trace_tools_and_citations(self) -> None:
         run = asyncio.run(

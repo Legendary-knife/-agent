@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { File, FileSpreadsheet, FileText, Globe2, Library, Loader2, Upload } from 'lucide-react'
 
 import { Section } from '@/components/Section'
@@ -20,6 +20,7 @@ interface KnowledgePanelProps {
 }
 
 export function KnowledgePanel({ documents }: KnowledgePanelProps) {
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const [scope, setScope] = useState('product')
   const [owner, setOwner] = useState('用户上传')
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
@@ -36,7 +37,13 @@ export function KnowledgePanel({ documents }: KnowledgePanelProps) {
   }
 
   const handleUpload = async () => {
-    if (!selectedFile || isUploading) {
+    if (isUploading) {
+      return
+    }
+
+    if (!selectedFile) {
+      setUploadMessage('请先选择一个文件')
+      fileInputRef.current?.click()
       return
     }
 
@@ -55,7 +62,7 @@ export function KnowledgePanel({ documents }: KnowledgePanelProps) {
     <Section
       icon={Library}
       title="知识库"
-      description="上传文档后会落到 SQLite，切分成 chunk，再进入本地检索。"
+      description="上传文档后会写入本地检索库，同时保存原文件和解析文本到仓库。"
     >
       <div className="mb-3 rounded-lg border border-line bg-[#fbfcf8] p-3">
         <div className="grid gap-2">
@@ -63,6 +70,7 @@ export function KnowledgePanel({ documents }: KnowledgePanelProps) {
             第一步：点击下面的系统按钮选择文件
           </label>
           <input
+            ref={fileInputRef}
             key={inputKey}
             id="knowledge-upload"
             type="file"
@@ -128,15 +136,15 @@ export function KnowledgePanel({ documents }: KnowledgePanelProps) {
           </div>
           <button
             type="button"
-            disabled={!selectedFile || isUploading}
+            disabled={isUploading}
             onClick={() => void handleUpload()}
             className={cn(
               'inline-flex items-center justify-center gap-2 rounded-md px-3 py-2 text-xs font-semibold text-white transition',
-              !selectedFile || isUploading ? 'bg-[#9aa89b]' : 'bg-moss hover:bg-[#255b42]',
+              isUploading ? 'bg-[#9aa89b]' : 'bg-moss hover:bg-[#255b42]',
             )}
           >
             {isUploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
-            {isUploading ? '上传中' : '上传并入库'}
+            {isUploading ? '上传中' : selectedFile ? '上传并入库' : '选择文件'}
           </button>
           {uploadMessage ? (
             <div className="rounded-md border border-[#b8dcc5] bg-[#eef7f1] px-2 py-1.5 text-xs leading-5 text-moss">
@@ -180,7 +188,12 @@ export function KnowledgePanel({ documents }: KnowledgePanelProps) {
                   </p>
                   {document.filePath ? (
                     <p className="mt-1 truncate font-mono text-[11px] leading-5 text-[#6b755f]">
-                      {document.filePath}
+                      原文件：{document.filePath}
+                    </p>
+                  ) : null}
+                  {document.textPath ? (
+                    <p className="mt-1 truncate font-mono text-[11px] leading-5 text-[#6b755f]">
+                      解析文本：{document.textPath}
                     </p>
                   ) : null}
                 </div>

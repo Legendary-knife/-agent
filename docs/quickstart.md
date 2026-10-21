@@ -108,21 +108,27 @@ A100 控制器有哪些产品参数和合规限制？
 2. 按长度和段落切成 chunk。
 3. 计算本地哈希向量。
 4. 写入 `data/agent_workbench.sqlite3`。
-5. 下一次运行 Agent 时参与检索。
+5. 把原文件和解析文本写入 `knowledge-base/`。
+6. 下一次运行 Agent 时参与检索。
 
-原始文件会保存到：
-
-```text
-data/uploads/
-```
-
-检索索引和 chunk 会保存到：
+本地运行数据会保存到：
 
 ```text
-data/agent_workbench.sqlite3
+data/
+├── agent_workbench.sqlite3
+└── uploads/
 ```
 
-这两个路径默认就在仓库目录下，但 `data/` 已加入 `.gitignore`，不会被提交到 GitHub。你也可以在 `.env` 里改：
+准备提交到 GitHub 的知识库文件会保存到：
+
+```text
+knowledge-base/
+├── uploads/        # 原始上传文件
+├── extracted/      # 解析后的纯文本
+└── manifest.json   # 文档清单
+```
+
+`data/` 已加入 `.gitignore`，只做本地运行索引。`knowledge-base/` 会进入项目 Git 仓库，上传成功后可以跟代码一起提交和推送。你也可以在 `.env` 里改本地运行数据目录：
 
 ```env
 WORKBENCH_DATA_DIR=/absolute/path/to/your/knowledge-data
@@ -163,6 +169,7 @@ CONFIRM_UPLOAD_KNOWLEDGE=YES bash scripts/sync_knowledge_to_github.sh \
 ```text
 knowledge-base/
 ├── uploads/        # 原始上传文件
+├── extracted/      # 解析后的纯文本
 └── manifest.json   # 文档元数据
 ```
 

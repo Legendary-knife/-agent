@@ -6,7 +6,16 @@ from pathlib import Path
 from typing import Optional
 from uuid import uuid4
 
-from backend.app.config import DATA_DIR, DB_PATH, ROOT_DIR, UPLOAD_DIR
+from backend.app.config import (
+    DATA_DIR,
+    DB_PATH,
+    REPO_KNOWLEDGE_DIR,
+    REPO_MANIFEST_PATH,
+    REPO_TEXT_DIR,
+    REPO_UPLOAD_DIR,
+    ROOT_DIR,
+    UPLOAD_DIR,
+)
 from backend.app.data import KNOWLEDGE_DOCUMENTS
 from backend.app.retrieval import chunk_text, cosine_similarity, embed_text
 
@@ -54,7 +63,8 @@ def init_database() -> None:
                 owner TEXT NOT NULL,
                 updated_at TEXT NOT NULL,
                 source TEXT NOT NULL,
-                file_path TEXT
+                file_path TEXT,
+                text_path TEXT
             )
             """
         )
@@ -64,6 +74,8 @@ def init_database() -> None:
         }
         if "file_path" not in columns:
             connection.execute("ALTER TABLE documents ADD COLUMN file_path TEXT")
+        if "text_path" not in columns:
+            connection.execute("ALTER TABLE documents ADD COLUMN text_path TEXT")
         connection.execute(
             """
             CREATE TABLE IF NOT EXISTS chunks (
@@ -106,12 +118,70 @@ def sanitize_filename(filename: str) -> str:
     return re.sub(r"[^0-9A-Za-z\u4e00-\u9fff._-]+", "_", basename)
 
 
+def create_document_id() -> str:
+    return f"doc-{uuid4().hex[:12]}"
+
+
 def save_uploaded_file(filename: str, content: bytes) -> str:
     UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
     stored_name = f"{uuid4().hex[:12]}_{sanitize_filename(filename)}"
     stored_path = UPLOAD_DIR / stored_name
     stored_path.write_bytes(content)
     return str(stored_path.relative_to(ROOT_DIR))
+
+
+def save_repository_knowledge_files(
+    document_id: str,
+    filename: str,
+    content: bytes,
+    extracted_text: str,
+) -> tuple[str, str]:
+    REPO_UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+    REPO_TEXT_DIR.mkdir(parents=True, exist_ok=True)
+
+    safe_name = sanitize_filename(filename)
+    raw_path = REPO_UPLOAD_DIR / f"{document_id}_{safe_name}"
+    text_stem = Path(safe_name).stem or document_id
+    text_path = REPO_TEXT_DIR / f"{document_id}_{text_stem}.txt"
+
+    raw_path.write_bytes(content)
+    text_path.write_text(extracted_text, encoding="utf-8")
+
+    return str(raw_path.relative_to(ROOT_DIR)), str(text_path.relative_to(ROOT_DIR))
+
+
+def write_repository_manifest() -> None:
+    REPO_KNOWLEDGE_DIR.mkdir(parents=True, exist_ok=True)
+
+    with get_connection() as connection:
+        rows = connection.execute(
+            """
+            SELECT id, title, type, scope, owner, updated_at, source, file_path, text_path
+            FROM documents
+            ORDER BY updated_at DESC
+            """
+        ).fetchall()
+
+    payload = [
+        {
+            "id": row["id"],
+            "title": row["title"],
+            "type": row["type"],
+            "scope": row["scope"],
+            "owner": row["owner"],
+            "updatedAt": row["updated_at"],
+            "source": row["source"],
+            "filePath": row["file_path"],
+            "textPath": row["text_path"],
+        }
+        for row in rows
+        if row["source"] == "upload" and row["file_path"] and row["text_path"]
+    ]
+
+    REPO_MANIFEST_PATH.write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
 
 
 def save_document(
@@ -124,22 +194,23 @@ def save_document(
     document_id: Optional[str] = None,
     updated_at: Optional[str] = None,
     file_path: Optional[str] = None,
+    text_path: Optional[str] = None,
 ) -> dict:
     chunks = chunk_text(text)
     if not chunks:
         raise ValueError("文档没有可解析的文本内容")
 
     now = updated_at or datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    resolved_document_id = document_id or f"doc-{uuid4().hex[:12]}"
+    resolved_document_id = document_id or create_document_id()
     normalized_type = Path(title).suffix.replace(".", "").upper() or file_type.upper()
 
     with get_connection() as connection:
         connection.execute(
             """
-            INSERT OR REPLACE INTO documents (id, title, type, scope, owner, updated_at, source, file_path)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT OR REPLACE INTO documents (id, title, type, scope, owner, updated_at, source, file_path, text_path)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
-            (resolved_document_id, title, normalized_type, scope, owner, now, source, file_path),
+            (resolved_document_id, title, normalized_type, scope, owner, now, source, file_path, text_path),
         )
         connection.execute("DELETE FROM chunks WHERE document_id = ?", (resolved_document_id,))
         for index, chunk in enumerate(chunks):
@@ -168,6 +239,7 @@ def save_document(
         "updatedAt": now,
         "source": source,
         "filePath": file_path,
+        "textPath": text_path,
     }
 
 
@@ -175,7 +247,7 @@ def list_documents() -> list[dict]:
     with get_connection() as connection:
         rows = connection.execute(
             """
-            SELECT d.id, d.title, d.type, d.scope, d.owner, d.updated_at, d.source, d.file_path, COUNT(c.id) AS chunks
+            SELECT d.id, d.title, d.type, d.scope, d.owner, d.updated_at, d.source, d.file_path, d.text_path, COUNT(c.id) AS chunks
             FROM documents d
             LEFT JOIN chunks c ON c.document_id = d.id
             GROUP BY d.id
@@ -194,6 +266,7 @@ def list_documents() -> list[dict]:
             "updatedAt": row["updated_at"],
             "source": row["source"],
             "filePath": row["file_path"],
+            "textPath": row["text_path"],
         }
         for row in rows
     ]

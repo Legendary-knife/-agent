@@ -24,6 +24,7 @@ export interface KnowledgeDocument {
   updatedAt: string
   source: 'demo' | 'upload' | string
   filePath?: string | null
+  textPath?: string | null
 }
 
 export interface ToolDefinition {
