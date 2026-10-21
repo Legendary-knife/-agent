@@ -1,5 +1,16 @@
 [
   {
+    "id": "doc-9fc0bc899642",
+    "title": "00_制作规格.md",
+    "type": "MD",
+    "scope": "product",
+    "owner": "用户上传",
+    "updatedAt": "2026-10-21 14:21:42",
+    "source": "upload",
+    "filePath": "knowledge-base/uploads/doc-9fc0bc899642_00_制作规格.md",
+    "textPath": "knowledge-base/extracted/doc-9fc0bc899642_00_制作规格.txt"
+  },
+  {
     "id": "doc-46a2861277ab",
     "title": "enterprise_agent_knowledge_flow_test.md",
     "type": "MD",

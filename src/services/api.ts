@@ -76,3 +76,10 @@ export async function uploadKnowledgeDocument(file: File, scope: string, owner: 
 
   return uploadRequest<KnowledgeDocument>('/knowledge/upload', body)
 }
+
+export async function importKnowledgeDocumentByPath(filePath: string, scope: string, owner: string) {
+  return request<KnowledgeDocument>('/knowledge/import-path', {
+    method: 'POST',
+    body: JSON.stringify({ filePath, scope, owner }),
+  })
+}

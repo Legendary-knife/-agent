@@ -1,6 +1,11 @@
 import { create } from 'zustand'
 
-import { createAgentRun, fetchWorkbenchBootstrap, uploadKnowledgeDocument } from '@/services/api'
+import {
+  createAgentRun,
+  fetchWorkbenchBootstrap,
+  importKnowledgeDocumentByPath,
+  uploadKnowledgeDocument,
+} from '@/services/api'
 import type {
   AgentRun,
   BusinessRecord,
@@ -26,6 +31,7 @@ interface WorkbenchState {
   runs: AgentRun[]
   loadWorkbench: () => Promise<void>
   uploadDocument: (file: File, scope: string, owner: string) => Promise<KnowledgeDocument>
+  importDocumentByPath: (filePath: string, scope: string, owner: string) => Promise<KnowledgeDocument>
   setScenario: (scenarioId: ScenarioId) => void
   setPrompt: (prompt: string) => void
   runActiveScenario: () => Promise<void>
@@ -89,6 +95,25 @@ export const useWorkbenchStore = create<WorkbenchState>((set, get) => ({
       return document
     } catch (error) {
       const message = error instanceof Error ? error.message : '知识库上传失败'
+      set({
+        error: message,
+        isUploading: false,
+      })
+      throw new Error(message)
+    }
+  },
+  importDocumentByPath: async (filePath, scope, owner) => {
+    set({ isUploading: true, error: null })
+
+    try {
+      const document = await importKnowledgeDocumentByPath(filePath, scope, owner)
+      set((state) => ({
+        knowledgeDocuments: [document, ...state.knowledgeDocuments.filter((item) => item.id !== document.id)],
+        isUploading: false,
+      }))
+      return document
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '知识库路径导入失败'
       set({
         error: message,
         isUploading: false,

@@ -13,6 +13,12 @@ class AgentRunRequest(BaseModel):
     prompt: str = Field(min_length=1, max_length=1000)
 
 
+class KnowledgeImportPathRequest(BaseModel):
+    file_path: str = Field(alias="filePath", min_length=1, max_length=2000)
+    scope: str = "product"
+    owner: str = "用户上传"
+
+
 class AgentTraceStep(BaseModel):
     id: str
     title: str

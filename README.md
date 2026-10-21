@@ -31,7 +31,7 @@
 - 供应链 Agent：查询模拟 ERP/WMS 数据，识别缺货风险并生成采购审批建议。
 - 工具中心：把 CRM、ERP、WMS、邮件、报表生成封装成统一 schema。
 - Trace 观测：每次运行保留任务拆解、RAG 命中、工具调用、审批校验和最终结论。
-- 知识库上传：支持 txt、md、csv、html、pdf、docx。
+- 知识库上传：支持 txt、md、csv、html、pdf、docx；也支持粘贴本地文件绝对路径导入。
 - 模型配置：支持 OpenAI-compatible Chat Completions。
 
 ## 怎么使用
@@ -87,7 +87,7 @@ http://127.0.0.1:8000/docs
 页面操作顺序：
 
 1. 左侧选择一个 Agent 场景。
-2. 右侧知识库上传你的文件。
+2. 右侧知识库选择文件或拖拽文件，文件会自动上传并入库。
 3. 中间输入业务问题。
 4. 点击“运行 Agent”。
 5. 查看“Agent 输出”。

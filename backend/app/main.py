@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -9,6 +11,7 @@ from backend.app.models import (
     AgentRun,
     AgentRunRequest,
     HealthResponse,
+    KnowledgeImportPathRequest,
     KnowledgeDocumentResponse,
     RuntimeConfigResponse,
 )
@@ -38,6 +41,31 @@ app.add_middleware(
 )
 
 RUN_HISTORY: list[AgentRun] = []
+
+
+def persist_knowledge_document(
+    filename: str,
+    content: bytes,
+    scope: str,
+    owner: str,
+) -> dict:
+    text, file_type = extract_text(filename, content)
+    document_id = create_document_id()
+    save_uploaded_file(filename, content)
+    file_path, text_path = save_repository_knowledge_files(document_id, filename, content, text)
+    document = save_document(
+        title=filename,
+        file_type=file_type,
+        scope=scope,
+        owner=owner,
+        source="upload",
+        text=text,
+        document_id=document_id,
+        file_path=file_path,
+        text_path=text_path,
+    )
+    write_repository_manifest()
+    return document
 
 
 @app.on_event("startup")
@@ -80,23 +108,23 @@ async def upload_knowledge_document(
     try:
         content = await file.read()
         filename = file.filename or "uploaded.txt"
-        text, file_type = extract_text(filename, content)
-        document_id = create_document_id()
-        save_uploaded_file(filename, content)
-        file_path, text_path = save_repository_knowledge_files(document_id, filename, content, text)
-        document = save_document(
-            title=filename,
-            file_type=file_type,
-            scope=scope,
-            owner=owner,
-            source="upload",
-            text=text,
-            document_id=document_id,
-            file_path=file_path,
-            text_path=text_path,
-        )
-        write_repository_manifest()
-        return document
+        return persist_knowledge_document(filename, content, scope, owner)
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+
+
+@app.post("/api/knowledge/import-path", response_model=KnowledgeDocumentResponse)
+def import_knowledge_document_by_path(request: KnowledgeImportPathRequest) -> dict:
+    file_path = Path(request.file_path).expanduser()
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="本地文件不存在")
+    if not file_path.is_file():
+        raise HTTPException(status_code=400, detail="路径不是文件")
+    if file_path.stat().st_size > 20 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="文件超过 20MB，暂不支持导入")
+
+    try:
+        return persist_knowledge_document(file_path.name, file_path.read_bytes(), request.scope, request.owner)
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
 
