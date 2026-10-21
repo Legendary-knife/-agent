@@ -1,5 +1,38 @@
 [
   {
+    "id": "doc-3a67b60e1bad",
+    "title": "README.md",
+    "type": "MD",
+    "scope": "product",
+    "owner": "用户上传",
+    "updatedAt": "2026-10-21 15:45:25",
+    "source": "upload",
+    "filePath": "knowledge-base/uploads/doc-3a67b60e1bad_README.md",
+    "textPath": "knowledge-base/extracted/doc-3a67b60e1bad_README.txt"
+  },
+  {
+    "id": "doc-a956a2f33813",
+    "title": "00_制作规格.md",
+    "type": "MD",
+    "scope": "product",
+    "owner": "用户上传",
+    "updatedAt": "2026-10-21 15:45:18",
+    "source": "upload",
+    "filePath": "knowledge-base/uploads/doc-a956a2f33813_00_制作规格.md",
+    "textPath": "knowledge-base/extracted/doc-a956a2f33813_00_制作规格.txt"
+  },
+  {
+    "id": "doc-957fea68f999",
+    "title": "00_制作规格.md",
+    "type": "MD",
+    "scope": "product",
+    "owner": "用户上传",
+    "updatedAt": "2026-10-21 15:45:15",
+    "source": "upload",
+    "filePath": "knowledge-base/uploads/doc-957fea68f999_00_制作规格.md",
+    "textPath": "knowledge-base/extracted/doc-957fea68f999_00_制作规格.txt"
+  },
+  {
     "id": "doc-8a6142609093",
     "title": "01_第1-29集_拆分表_E001-E153.md",
     "type": "MD",
