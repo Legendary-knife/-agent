@@ -25,6 +25,7 @@ from backend.app.storage import (
     save_document,
     save_repository_knowledge_files,
     save_uploaded_file,
+    sync_repository_knowledge_base,
     write_repository_manifest,
 )
 
@@ -68,6 +69,7 @@ def persist_knowledge_document(
         text_path=text_path,
     )
     write_repository_manifest()
+    document.update(sync_repository_knowledge_base())
     return document
 
 

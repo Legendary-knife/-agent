@@ -43,7 +43,9 @@ export function KnowledgePanel({ documents }: KnowledgePanelProps) {
 
     try {
       const document = await uploadDocument(file, scope, owner)
-      setUploadMessage(`已上传：${document.title}`)
+      setUploadMessage(
+        `已上传：${document.title}。本地：${document.filePath ?? '已入库'}；GitHub：${document.gitSyncMessage ?? '等待同步状态'}`,
+      )
       setSelectedFile(null)
       setInputKey((value) => value + 1)
     } catch {
@@ -61,7 +63,9 @@ export function KnowledgePanel({ documents }: KnowledgePanelProps) {
     try {
       setUploadMessage('')
       const document = await importDocumentByPath(trimmedPath, scope, owner)
-      setUploadMessage(`已导入：${document.title}`)
+      setUploadMessage(
+        `已导入：${document.title}。本地：${document.filePath ?? '已入库'}；GitHub：${document.gitSyncMessage ?? '等待同步状态'}`,
+      )
       setLocalPath('')
     } catch {
       setUploadMessage('')
@@ -233,6 +237,16 @@ export function KnowledgePanel({ documents }: KnowledgePanelProps) {
                   {document.textPath ? (
                     <p className="mt-1 truncate font-mono text-[11px] leading-5 text-[#6b755f]">
                       解析文本：{document.textPath}
+                    </p>
+                  ) : null}
+                  {document.gitSyncMessage ? (
+                    <p
+                      className={cn(
+                        'mt-1 text-[11px] leading-5',
+                        document.gitSyncStatus === 'failed' ? 'text-clay' : 'text-moss',
+                      )}
+                    >
+                      GitHub：{document.gitSyncMessage}
                     </p>
                   ) : null}
                 </div>

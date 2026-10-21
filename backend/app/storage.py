@@ -1,6 +1,7 @@
 import json
 import re
 import sqlite3
+import subprocess
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
@@ -182,6 +183,77 @@ def write_repository_manifest() -> None:
         json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
         encoding="utf-8",
     )
+
+
+def sync_repository_knowledge_base() -> dict:
+    paths = [
+        str(REPO_MANIFEST_PATH.relative_to(ROOT_DIR)),
+        str(REPO_UPLOAD_DIR.relative_to(ROOT_DIR)),
+        str(REPO_TEXT_DIR.relative_to(ROOT_DIR)),
+    ]
+
+    try:
+        status = subprocess.run(
+            ["git", "status", "--porcelain", "--", *paths],
+            cwd=ROOT_DIR,
+            capture_output=True,
+            text=True,
+            check=True,
+            timeout=10,
+        )
+        if not status.stdout.strip():
+            return {
+                "gitSyncStatus": "skipped",
+                "gitSyncMessage": "本地和 GitHub 已一致，没有新的知识库文件需要推送",
+            }
+
+        subprocess.run(
+            ["git", "add", "--", *paths],
+            cwd=ROOT_DIR,
+            capture_output=True,
+            text=True,
+            check=True,
+            timeout=10,
+        )
+        commit = subprocess.run(
+            ["git", "commit", "-m", "chore: sync uploaded knowledge"],
+            cwd=ROOT_DIR,
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=20,
+        )
+        if commit.returncode != 0 and "nothing to commit" not in (commit.stdout + commit.stderr):
+            raise RuntimeError((commit.stderr or commit.stdout).strip())
+
+        branch = subprocess.run(
+            ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+            cwd=ROOT_DIR,
+            capture_output=True,
+            text=True,
+            check=True,
+            timeout=10,
+        ).stdout.strip()
+        push = subprocess.run(
+            ["git", "push", "origin", branch],
+            cwd=ROOT_DIR,
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=60,
+        )
+        if push.returncode != 0:
+            raise RuntimeError((push.stderr or push.stdout).strip())
+
+        return {
+            "gitSyncStatus": "synced",
+            "gitSyncMessage": f"已自动提交并推送到 GitHub：{branch}",
+        }
+    except Exception as error:
+        return {
+            "gitSyncStatus": "failed",
+            "gitSyncMessage": f"本地已保存，但自动推送 GitHub 失败：{str(error).splitlines()[-1]}",
+        }
 
 
 def save_document(

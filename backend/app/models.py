@@ -96,3 +96,5 @@ class KnowledgeDocumentResponse(BaseModel):
     source: str
     filePath: Optional[str] = None
     textPath: Optional[str] = None
+    gitSyncStatus: Optional[Literal["synced", "skipped", "failed"]] = None
+    gitSyncMessage: Optional[str] = None

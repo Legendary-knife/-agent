@@ -25,6 +25,8 @@ export interface KnowledgeDocument {
   source: 'demo' | 'upload' | string
   filePath?: string | null
   textPath?: string | null
+  gitSyncStatus?: 'synced' | 'skipped' | 'failed' | null
+  gitSyncMessage?: string | null
 }
 
 export interface ToolDefinition {
