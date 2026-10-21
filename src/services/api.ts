@@ -2,6 +2,7 @@ import type {
   AgentRun,
   BusinessRecord,
   KnowledgeDocument,
+  RagInspectResponse,
   RuntimeConfig,
   Scenario,
   ScenarioId,
@@ -81,5 +82,12 @@ export async function importKnowledgeDocumentByPath(filePath: string, scope: str
   return request<KnowledgeDocument>('/knowledge/import-path', {
     method: 'POST',
     body: JSON.stringify({ filePath, scope, owner }),
+  })
+}
+
+export async function inspectRagRetrieval(query: string, scope = 'all', topK = 5) {
+  return request<RagInspectResponse>('/rag/inspect', {
+    method: 'POST',
+    body: JSON.stringify({ query, scope, topK }),
   })
 }

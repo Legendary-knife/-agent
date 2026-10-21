@@ -13,12 +13,15 @@ from backend.app.models import (
     HealthResponse,
     KnowledgeImportPathRequest,
     KnowledgeDocumentResponse,
+    RagInspectRequest,
+    RagInspectResponse,
     RuntimeConfigResponse,
 )
 from backend.app.storage import (
     create_document_id,
     init_database,
     list_documents,
+    inspect_retrieval,
     save_document,
     save_repository_knowledge_files,
     save_uploaded_file,
@@ -127,6 +130,11 @@ def import_knowledge_document_by_path(request: KnowledgeImportPathRequest) -> di
         return persist_knowledge_document(file_path.name, file_path.read_bytes(), request.scope, request.owner)
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
+
+
+@app.post("/api/rag/inspect", response_model=RagInspectResponse)
+def inspect_rag_retrieval(request: RagInspectRequest) -> dict:
+    return inspect_retrieval(request.query, request.top_k, request.scope)
 
 
 @app.get("/api/tools")

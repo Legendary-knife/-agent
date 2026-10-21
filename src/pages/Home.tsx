@@ -6,6 +6,7 @@ import { ArchitecturePanel } from '@/components/ArchitecturePanel'
 import { BusinessSystemsPanel } from '@/components/BusinessSystemsPanel'
 import { KnowledgePanel } from '@/components/KnowledgePanel'
 import { MetricCard } from '@/components/MetricCard'
+import { RagInspectorPanel } from '@/components/RagInspectorPanel'
 import { RoadmapPanel } from '@/components/RoadmapPanel'
 import { ScenarioSwitcher } from '@/components/ScenarioSwitcher'
 import { ToolRegistry } from '@/components/ToolRegistry'
@@ -118,6 +119,7 @@ export default function Home() {
             ))}
           </div>
           <AgentConsole />
+          <RagInspectorPanel />
           <UsageGuidePanel />
           <ArchitecturePanel />
         </div>

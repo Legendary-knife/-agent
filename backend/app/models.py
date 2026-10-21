@@ -19,6 +19,38 @@ class KnowledgeImportPathRequest(BaseModel):
     owner: str = "用户上传"
 
 
+class RagInspectRequest(BaseModel):
+    query: str = Field(min_length=1, max_length=1000)
+    scope: str = "all"
+    top_k: int = Field(default=5, alias="topK", ge=1, le=12)
+
+
+class RagInspectResult(BaseModel):
+    id: str
+    documentId: str
+    documentTitle: str
+    chunkIndex: int
+    content: str
+    scope: str
+    type: str
+    owner: str
+    updatedAt: str
+    vectorScore: float
+    keywordCoverage: float
+    combinedScore: float
+    matchedTerms: list[str]
+
+
+class RagInspectResponse(BaseModel):
+    query: str
+    scope: str
+    topK: int
+    candidateCount: int
+    quality: Literal["strong", "usable", "weak", "missing"]
+    recommendation: str
+    results: list[RagInspectResult]
+
+
 class AgentTraceStep(BaseModel):
     id: str
     title: str

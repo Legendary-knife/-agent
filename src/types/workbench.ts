@@ -79,3 +79,29 @@ export interface RuntimeConfig {
   llmModel: string
   ragTopK: number
 }
+
+export interface RagInspectResult {
+  id: string
+  documentId: string
+  documentTitle: string
+  chunkIndex: number
+  content: string
+  scope: string
+  type: string
+  owner: string
+  updatedAt: string
+  vectorScore: number
+  keywordCoverage: number
+  combinedScore: number
+  matchedTerms: string[]
+}
+
+export interface RagInspectResponse {
+  query: string
+  scope: string
+  topK: number
+  candidateCount: number
+  quality: 'strong' | 'usable' | 'weak' | 'missing'
+  recommendation: string
+  results: RagInspectResult[]
+}

@@ -7,7 +7,7 @@ from unittest.mock import patch
 import backend.app.storage as storage
 from backend.app.agent_service import create_agent_run
 from backend.app.models import AgentRunRequest
-from backend.app.storage import init_database, save_document, search_chunks
+from backend.app.storage import init_database, inspect_retrieval, save_document, search_chunks
 
 
 class AgentServiceTest(unittest.TestCase):
@@ -90,6 +90,23 @@ class AgentServiceTest(unittest.TestCase):
         chunks = search_chunks("客户工单多久响应", top_k=3)
 
         self.assertTrue(any("售后服务政策" in chunk["documentTitle"] for chunk in chunks))
+
+    def test_retrieval_inspection_reports_quality_signals(self) -> None:
+        save_document(
+            title="RAG 诊断政策.md",
+            file_type="MD",
+            scope="policy",
+            owner="测试",
+            source="upload",
+            text="RAG 诊断规则：客户提交工单后，技术支持必须在 6 小时内首次响应。",
+        )
+
+        report = inspect_retrieval("客户提交工单多久首次响应", top_k=3, scope="policy")
+
+        self.assertGreaterEqual(report["candidateCount"], 1)
+        self.assertIn(report["quality"], {"strong", "usable", "weak"})
+        self.assertTrue(any("RAG 诊断政策" in item["documentTitle"] for item in report["results"]))
+        self.assertTrue(any(item["matchedTerms"] for item in report["results"]))
 
 
 if __name__ == "__main__":

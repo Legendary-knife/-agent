@@ -17,7 +17,7 @@ from backend.app.config import (
     UPLOAD_DIR,
 )
 from backend.app.data import KNOWLEDGE_DOCUMENTS
-from backend.app.retrieval import chunk_text, cosine_similarity, embed_text
+from backend.app.retrieval import chunk_text, cosine_similarity, embed_text, tokenize
 
 
 DEMO_TEXT_BY_TITLE = {
@@ -304,3 +304,82 @@ def search_chunks(query: str, top_k: int) -> list[dict]:
         }
         for score, row in sorted(scored_chunks, key=lambda item: item[0], reverse=True)[:top_k]
     ]
+
+
+def inspect_retrieval(query: str, top_k: int = 5, scope: str = "all") -> dict:
+    query_embedding = embed_text(query)
+    query_terms = set(tokenize(query))
+    with get_connection() as connection:
+        rows = connection.execute(
+            """
+            SELECT c.id, c.document_id, c.chunk_index, c.content, c.embedding,
+                   d.title AS document_title, d.scope, d.type, d.owner, d.updated_at
+            FROM chunks c
+            JOIN documents d ON d.id = c.document_id
+            """
+        ).fetchall()
+
+    scoped_rows = [row for row in rows if scope == "all" or row["scope"] == scope]
+    inspected: list[dict] = []
+    for row in scoped_rows:
+        embedding = json.loads(row["embedding"])
+        vector_score = cosine_similarity(query_embedding, embedding)
+        chunk_terms = set(tokenize(row["content"]))
+        matched_terms = sorted(query_terms & chunk_terms)
+        keyword_coverage = len(matched_terms) / max(len(query_terms), 1)
+        combined_score = (vector_score * 0.72) + (keyword_coverage * 0.28)
+        if vector_score <= 0 and not matched_terms:
+            continue
+        inspected.append(
+            {
+                "id": row["id"],
+                "documentId": row["document_id"],
+                "documentTitle": row["document_title"],
+                "chunkIndex": row["chunk_index"],
+                "content": row["content"],
+                "scope": row["scope"],
+                "type": row["type"],
+                "owner": row["owner"],
+                "updatedAt": row["updated_at"],
+                "vectorScore": round(vector_score, 4),
+                "keywordCoverage": round(keyword_coverage, 4),
+                "combinedScore": round(combined_score, 4),
+                "matchedTerms": matched_terms[:12],
+            }
+        )
+
+    unique_results: list[dict] = []
+    seen_results: set[tuple[str, int, str]] = set()
+    for item in sorted(inspected, key=lambda chunk: chunk["combinedScore"], reverse=True):
+        key = (item["documentTitle"], item["chunkIndex"], item["content"])
+        if key in seen_results:
+            continue
+        seen_results.add(key)
+        unique_results.append(item)
+        if len(unique_results) >= top_k:
+            break
+
+    results = unique_results
+    top_score = results[0]["combinedScore"] if results else 0
+    if not results:
+        quality = "missing"
+        recommendation = "没有命中知识片段。先上传相关资料，或把问题改得更接近文档里的关键词。"
+    elif top_score >= 0.42 and len(results) >= 3:
+        quality = "strong"
+        recommendation = "召回质量较好。可以直接运行 Agent，并检查最终回答是否引用了前几条来源。"
+    elif top_score >= 0.24:
+        quality = "usable"
+        recommendation = "召回可用但不算强。建议补充同义词、业务对象或限定资料范围，提高命中精度。"
+    else:
+        quality = "weak"
+        recommendation = "召回偏弱。建议换更具体的问题，或补充结构更清晰的知识文件。"
+
+    return {
+        "query": query,
+        "scope": scope,
+        "topK": top_k,
+        "candidateCount": len(scoped_rows),
+        "quality": quality,
+        "recommendation": recommendation,
+        "results": results,
+    }
