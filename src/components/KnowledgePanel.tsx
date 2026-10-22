@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import { File, FileSpreadsheet, FileText, Globe2, Library, Loader2, Upload } from 'lucide-react'
 
 import { Section } from '@/components/Section'
@@ -20,13 +20,10 @@ interface KnowledgePanelProps {
 }
 
 export function KnowledgePanel({ documents }: KnowledgePanelProps) {
-  const fileInputRef = useRef<HTMLInputElement>(null)
   const [scope, setScope] = useState('product')
   const [owner, setOwner] = useState('用户上传')
-  const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [localPath, setLocalPath] = useState('')
   const [uploadMessage, setUploadMessage] = useState('')
-  const [inputKey, setInputKey] = useState(0)
   const [isDragging, setIsDragging] = useState(false)
   const uploadDocument = useWorkbenchStore((state) => state.uploadDocument)
   const importDocumentByPath = useWorkbenchStore((state) => state.importDocumentByPath)
@@ -38,7 +35,6 @@ export function KnowledgePanel({ documents }: KnowledgePanelProps) {
       return
     }
 
-    setSelectedFile(file)
     setUploadMessage('')
 
     try {
@@ -46,8 +42,6 @@ export function KnowledgePanel({ documents }: KnowledgePanelProps) {
       setUploadMessage(
         `已上传：${document.title}。本地：${document.filePath ?? '已入库'}；GitHub：${document.gitSyncMessage ?? '等待同步状态'}`,
       )
-      setSelectedFile(null)
-      setInputKey((value) => value + 1)
     } catch {
       setUploadMessage('')
     }
@@ -80,19 +74,6 @@ export function KnowledgePanel({ documents }: KnowledgePanelProps) {
     >
       <div className="mb-3 rounded-lg border border-line bg-[#fbfcf8] p-3">
         <div className="grid gap-2">
-          <label className="text-xs font-semibold text-[#4d594c]" htmlFor="knowledge-upload">
-            第一步：点击下面的系统按钮选择文件
-          </label>
-          <input
-            ref={fileInputRef}
-            key={inputKey}
-            id="knowledge-upload"
-            type="file"
-            accept=".txt,.md,.csv,.html,.pdf,.docx"
-            disabled={isUploading}
-            onChange={(event) => void uploadFileNow(event.target.files?.[0] ?? null)}
-            className="w-full rounded-md border border-line bg-white px-2 py-2 text-xs text-muted file:mr-3 file:rounded-md file:border-0 file:bg-moss file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-white"
-          />
           <div
             onDragOver={(event) => {
               event.preventDefault()
@@ -115,11 +96,7 @@ export function KnowledgePanel({ documents }: KnowledgePanelProps) {
             </div>
             <div>
               <p className="text-sm font-semibold text-ink">
-                {isUploading
-                  ? '正在上传并入库'
-                  : selectedFile
-                    ? selectedFile.name
-                    : '把文件拖到这里会自动上传'}
+                {isUploading ? '正在上传并入库' : '把文件拖到这里会自动上传'}
               </p>
               <p className="mt-1 text-[11px] leading-5 text-muted">
                 支持 txt、md、csv、html、pdf、docx
@@ -146,27 +123,11 @@ export function KnowledgePanel({ documents }: KnowledgePanelProps) {
           </div>
           <div className="flex items-center gap-2 text-[11px] leading-5 text-muted">
             {isUploading ? <Loader2 className="h-3.5 w-3.5 animate-spin text-moss" /> : <Upload className="h-3.5 w-3.5 text-moss" />}
-            {isUploading
-              ? '正在解析、切分并写入知识库'
-              : selectedFile
-                ? `已选择：${selectedFile.name}`
-                : '选择文件或拖拽文件都会立即入库'}
+            {isUploading ? '正在解析、切分并写入知识库' : '拖拽文件会立即入库，也可以使用下面的路径导入'}
           </div>
-          <button
-            type="button"
-            disabled={isUploading}
-            onClick={() => fileInputRef.current?.click()}
-            className={cn(
-              'inline-flex items-center justify-center gap-2 rounded-md px-3 py-2 text-xs font-semibold text-white transition',
-              isUploading ? 'bg-[#9aa89b]' : 'bg-moss hover:bg-[#255b42]',
-            )}
-          >
-            {isUploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
-            {isUploading ? '上传中' : '选择并上传'}
-          </button>
           <div className="grid gap-2 rounded-md border border-line bg-white p-2">
             <label className="text-[11px] font-semibold leading-5 text-[#4d594c]" htmlFor="knowledge-path">
-              文件选择器不可用时，粘贴本地文件绝对路径导入
+              粘贴本地文件绝对路径导入
             </label>
             <input
               id="knowledge-path"
