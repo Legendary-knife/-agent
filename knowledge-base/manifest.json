@@ -1,5 +1,16 @@
 [
   {
+    "id": "doc-fa5dc4c0aabe",
+    "title": "AI Coding 服务端与成熟工程 Harness 实践.md",
+    "type": "MD",
+    "scope": "product",
+    "owner": "用户上传",
+    "updatedAt": "2026-10-22 14:19:42",
+    "source": "upload",
+    "filePath": "knowledge-base/uploads/doc-fa5dc4c0aabe_AI_Coding_服务端与成熟工程_Harness_实践.md",
+    "textPath": "knowledge-base/extracted/doc-fa5dc4c0aabe_AI_Coding_服务端与成熟工程_Harness_实践.txt"
+  },
+  {
     "id": "doc-a9aab738de51",
     "title": "AI Agent MCP Prompt Faas 搭建实践.md",
     "type": "MD",
